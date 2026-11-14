@@ -13,6 +13,22 @@
     luk: ['운', '급소 +2%, 조우 · 추가 수확 확률 상승'],
     end: ['지구력', '행동 스태미너 소모 -4%, 휴식 회복 +10%'],
   };
+  // 고유 스킬: 캐릭터를 만들 때 하나 고른다
+  const SKILLS = {
+    stealth: ['은신', '다른 생존자에게 조우당할 확률 -40%'],
+    medic: ['응급처치', '회복 아이템 효과 +50%, 쉴 때 체력 회복 2배'],
+    hunter: ['사냥꾼', '짐승에게 받는 피해 -30%, 짐승 전리품 +1'],
+    scav: ['수집가', '탐색 허탕 확률 절반, 물건 하나 더 나올 확률 +30%'],
+    brawler: ['기습가', '선제공격 피해 +25%'],
+    runner: ['질주', '이동 시간 -25%, 도주 성공률 +20%'],
+  };
+  // 밤낮 · 날씨: 구역이 닫힐 때마다 바뀐다
+  const WEATHER = {
+    clear: ['맑음', '특별한 효과 없음'],
+    rain: ['비', '소란이 이웃 구역까지 들리지 않는다'],
+    fog: ['안개', '조우 확률 -10%, 도주 성공률 +15%'],
+  };
+  const DROP_POOL = ['crystal', 'motor', 'plate', 'strap', 'scope', 'weave', 'armor3', 'head2', 'arm2', 'boots2', 'aid_kit', 'kit', 'power_potion'];
   const ri = n => Math.random() * n | 0, pick = a => a[ri(a.length)];
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = ri(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   function J(w, a, b) { const c = w.charCodeAt(w.length - 1); if (c < 0xAC00 || c > 0xD7A3) return w + b; return w + ((c - 0xAC00) % 28 ? a : b); }
@@ -29,12 +45,13 @@
       name: clean(c.name, 10) || '이름 없는 생존자', color: /^#[0-9a-fA-F]{6}$/.test(c.color) ? c.color : COLORS[0],
       img: (typeof c.img === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c.img) && c.img.length < 60000) ? c.img : '',
       weapon: ['sword', 'spear', 'bow'].includes(c.weapon) ? c.weapon : 'sword', st,
+      skill: SKILLS[c.skill] ? c.skill : 'scav',
       bio: clean(c.bio, 60), lines: { meet: clean(L.meet, 40), kill: clean(L.kill, 40), die: clean(L.die, 40) },
     };
   }
 
   class World {
-    constructor(s) { this.s = s; for (const c of Object.values(s.chars || {})) { c.st.end = c.st.end || 0; c.sp = c.sp || 0; } s.noise = s.noise || []; s.pv = s.pv || {}; s.pvT = s.pvT || 0; for (const c of Object.values(s.chars)) { c.visits = c.visits || {}; c.battle = 0; for (const k of SLOTS) if (c.eq[k] === undefined) c.eq[k] = null; while (c.inv.length < INV) c.inv.push(null); if (c.act && c.act.k === 'explore' && c.act.p == null) c.act = null; } }
+    constructor(s) { this.s = s; s.wx = s.wx || { day: true, w: 'clear' }; s.drop = s.drop || null; for (const c of Object.values(s.chars || {})) { c.st.end = c.st.end || 0; c.sp = c.sp || 0; c.skill = c.skill || 'scav'; c.ally = c.ally || 0; c.allyReq = c.allyReq || 0; } s.noise = s.noise || []; s.pv = s.pv || {}; s.pvT = s.pvT || 0; for (const c of Object.values(s.chars)) { c.visits = c.visits || {}; c.battle = 0; for (const k of SLOTS) if (c.eq[k] === undefined) c.eq[k] = null; while (c.inv.length < INV) c.inv.push(null); if (c.act && c.act.k === 'explore' && c.act.p == null) c.act = null; } }
     static create(opts) {
       opts = opts || {}; const tempo = TEMPO[opts.tempo] ? opts.tempo : 'fast';
       return new World({ v: 1, t: 0, started: false, over: null, tempo, len: TEMPO[tempo].len, nextClose: 0, phase: 0, final: false, duelT: 0, zs: ZONES.map(() => 0), order: shuffle(ZONES.map((_, i) => i)), chars: {}, nid: 1, battles: {}, piles: {}, pv: {}, pvT: 0, feed: [], chat: [], rank: [] });
@@ -44,7 +61,7 @@
     // 스태미너: 저절로는 아주 조금, 쉬면 빠르게 (판 길이에 비례)
     static restRate(len, inBase) { return 100 / (len * 0.2) * (inBase ? 1.6 : 1); }
     static idleRate(len) { return 100 / (len * 4); }
-    legDur(c) { return Math.round(DUR.move * (1 - 0.1 * this.stats(c).agi / 3)); }
+    legDur(c) { return Math.round(DUR.move * (1 - 0.1 * this.stats(c).agi / 3) * (c.skill === 'runner' ? 0.75 : 1)); }
     // 폐쇄되지 않은 구역만 밟는 가장 짧은 길 (출발 구역 제외, 도착 구역 포함)
     route(from, to) {
       const prev = { [from]: -1 }, q = [from];
@@ -60,7 +77,7 @@
     addChar(def, bot) {
       const s = this.s, d = cleanChar(def), id = s.nid++;
       const c = s.chars[id] = {
-        id, name: d.name, color: d.color, img: d.img, st: d.st, bio: d.bio, lines: d.lines, bot: !!bot, online: false, wc: d.weapon,
+        id, name: d.name, color: d.color, img: d.img, st: d.st, skill: d.skill, ally: 0, allyReq: 0, bio: d.bio, lines: d.lines, bot: !!bot, online: false, wc: d.weapon,
         hp: 0, hunger: 100, en: 100, zone: 0, alive: true, lvl: 1, xp: 0, kills: 0, inv: new Array(INV).fill(null),
         eq: { weapon: d.weapon + '1', armor: null, head: null, arm: null, boots: null }, act: null, base: null, inBase: false, battle: 0, seen: {}, bf: { atk: 0, agi: 0 }, log: [], seenAt: s.t, think: 0, starve: 0, visits: {},
       };
@@ -74,7 +91,7 @@
         let name; do { name = pick(BOT_NAMES); } while (used.has(name) && used.size < BOT_NAMES.length); used.add(name);
         const st = { str: 0, agi: 0, con: 0, luk: 0, end: 0 }, ks = Object.keys(st);
         for (let k = 0; k < START_PTS;) { const q = pick(ks); if (st[q] < 6) { st[q]++; k++; } }
-        this.addChar({ name, color: pick(COLORS), weapon: pick(['sword', 'spear', 'bow']), st, lines: pick(BOT_LINES) }, true);
+        this.addChar({ name, color: pick(COLORS), weapon: pick(['sword', 'spear', 'bow']), st, skill: pick(Object.keys(SKILLS)), lines: pick(BOT_LINES) }, true);
       }
     }
     openZone() { const o = ZONES.map((_, i) => i).filter(i => this.s.zs[i] === 0); return o.length ? pick(o) : this.s.zs.findIndex(v => v < 2); }
@@ -83,7 +100,7 @@
       s.started = true; s.nextClose = s.t + s.len;
       const zs = shuffle(ZONES.map((_, i) => i)); let k = 0;
       for (const c of this.list) { c.zone = zs[k++ % zs.length]; c.seenAt = s.t; this.log(c, `${ZONES[c.zone].n}에서 눈을 떴다. 손에는 ${ITEMS[c.eq.weapon].n} 하나뿐이다.`, 'sys'); }
-      this.feed(`실험이 시작되었다. 생존자 ${this.list.length}명.`, 'sys');
+      this.feed(`실험이 시작되었다. 생존자 ${this.list.length}명.`, 'sys'); s.wx = { day: true, w: 'clear' };
     }
 
     stats(c) {
@@ -122,7 +139,7 @@
       if (it.tier) { const old = c.eq[it.t]; c.eq[it.t] = s.id; c.inv[slot] = old ? { id: old, n: 1 } : null; this.log(c, `${J(it.n, '을', '를')} 장비했다.`); return; }
       if (it.t === 'mat') return '그대로는 쓸 수 없는 재료입니다';
       if (it.hun) c.hunger = Math.min(100, c.hunger + it.hun);
-      if (it.hp) c.hp = Math.min(m.maxHp, c.hp + it.hp);
+      if (it.hp) c.hp = Math.min(m.maxHp, c.hp + it.hp * (c.skill === 'medic' ? 1.5 : 1));
       if (it.en) c.en = Math.min(100, c.en + it.en);
       if (it.buff) c.bf[it.buff] = this.s.t + this.s.len * 0.6;
       if (!--s.n) c.inv[slot] = null;
@@ -143,7 +160,9 @@
     cmd(id, m) {
       const s = this.s, c = s.chars[id]; if (!c || !m) return '캐릭터가 없습니다';
       if (m.k === 'chat') { const t = clean(m.m, 120); if (t) { s.chat.push({ t: Math.round(s.t), id: c.id, n: c.name, m: t }); if (s.chat.length > 80) s.chat.shift(); } return; }
+      if (m.k === 'spec') { const o = s.chars[m.who | 0]; if (c.alive && !s.over) return '탈락한 뒤에만 관전할 수 있습니다'; c.spec = o && o.alive ? o.id : 0; return; }
       if (!s.started) return '아직 시작 전입니다'; if (s.over) return '판이 끝났습니다'; if (!c.alive) return '이미 탈락했습니다';
+      if (s.paused) return '운영자가 판을 멈춰 두었습니다';
       c.seenAt = s.t;
       if (m.k === 'ack') { if (c.fight) c.fight.ack = true; return; }
       if (c.enc && ['explore', 'hunt', 'move', 'rest', 'build', 'enter'].includes(m.k)) { c.enc = null; }
@@ -157,6 +176,25 @@
         case 'stat': {
           const k = String(m.s); if (!(k in STAT_FX)) return '없는 능력치입니다'; if (!(c.sp > 0)) return '남은 포인트가 없습니다'; if (c.st[k] >= STAT_MAX) return `한 능력치는 ${STAT_MAX}까지 올릴 수 있습니다`;
           c.st[k]++; c.sp--; if (k === 'con') c.hp += 12; this.log(c, `${STAT_FX[k][0]} ${c.st[k] - 1} → ${c.st[k]}`, 'good'); return;
+        }
+        case 'ally': {
+          const o = s.chars[m.who | 0]; if (!o || !o.alive || o === c) return '상대가 없습니다';
+          if (s.final || this.alive().length <= 3) return '이제는 누구도 믿을 수 없다';
+          if (c.ally) return '이미 동맹이 있습니다'; if (o.ally) return `${J(o.name, '은', '는')} 이미 다른 동맹이 있다`;
+          if (o.zone !== z || !c.seen[o.id]) return '같은 구역에서 마주친 상대에게만 청할 수 있습니다';
+          if (c.enc && c.enc.id === o.id) c.enc = null;
+          if (o.bot) {
+            if (Math.random() < 0.55 && o.grudge !== c.id) { this.makeAlly(c, o); }
+            else { this.log(c, `${J(o.name, '은', '는')} 고개를 저었다. 동맹 제안이 거절되었다.`, 'warn'); o.seen[c.id] = 1; }
+          } else { o.allyReq = c.id; o.seen[c.id] = 1; this.log(c, `${o.name}에게 동맹을 제안했다. 답을 기다린다.`); this.log(o, `${J(c.name, '이', '가')} 동맹을 제안했다.`, 'warn'); }
+          return;
+        }
+        case 'allyOk': { const o = s.chars[c.allyReq]; c.allyReq = 0; if (!o || !o.alive || o.ally || c.ally) return '이제는 받을 수 없는 제안입니다'; this.makeAlly(o, c); return; }
+        case 'allyNo': { const o = s.chars[c.allyReq]; c.allyReq = 0; if (o) this.log(o, `${J(c.name, '이', '가')} 동맹 제안을 거절했다.`, 'warn'); return; }
+        case 'allyBreak': { if (c.ally) this.breakAlly(c, `${J(c.name, '이', '가')} 동맹을 끊었다.`); return; }
+        case 'openDrop': {
+          if (!s.drop || s.drop.z !== z) return '이 구역에 보급품이 없습니다'; if (c.act) return '하던 일을 먼저 끝내야 합니다'; if (c.inBase) return '거점에서 나와야 합니다';
+          c.enc = null; c.act = { k: 'open', start: s.t, end: s.t + 15 }; this.noise(z, 'drop'); this.log(c, '보급 상자의 잠금을 뜯기 시작했다.'); return;
         }
         case 'cancel': if (c.act) { c.act = null; this.log(c, '하던 일을 멈췄다.'); } return;
         case 'use': return this.useItem(c, m.slot);
@@ -199,7 +237,7 @@
         case 'attack': {
           const o = s.chars[m.who | 0];
           if (c.inBase) return '거점에서 나와야 합니다';
-          if (!c.enc || !o || c.enc.id !== o.id) return '마주친 상대만 공격할 수 있습니다';
+          if (!c.enc || !o || c.enc.id !== o.id) return '마주친 상대만 공격할 수 있습니다'; if (o.id === c.ally) return '동맹은 공격할 수 없습니다';
           if (!o.alive || o.zone !== z || o.inBase) { c.enc = null; return '상대가 이미 사라졌습니다'; }
           if (c.act) return '하던 일을 먼저 끝내야 합니다'; if (c.en < this.cost(c, COST.attack)) return '스태미너가 부족합니다. 쉬어야 합니다';
           c.en -= this.cost(c, COST.attack); c.enc = null; this.strike(c, o); return;
@@ -226,6 +264,11 @@
         this.log(c, `${ZONES[a.to].n}에 도착했다. ${n ? (n > 1 ? '여럿의 기척이 느껴진다.' : '누군가의 기척이 느껴진다.') : '인기척은 없다.'}`);
         return;
       }
+      if (a.k === 'open') {
+        if (!s.drop || s.drop.z !== z) { this.log(c, '한발 늦었다. 보급 상자는 이미 비어 있다.', 'bad'); return; }
+        const got = s.drop.items; s.drop = null; for (const g of got) this.giveOrPile(c, g, 1); this.xp(c, 20);
+        this.log(c, `보급품을 차지했다! ${JL(got, '을', '를')} 얻었다.`, 'good'); this.feed(`📦 ${ZONES[z].n}의 보급품을 누군가 차지했다.`, 'warn'); return;
+      }
       if (a.k === 'build') { c.base = { zone: z, stash: (c.base && c.base.zone === z) ? c.base.stash : [] }; this.xp(c, 10); this.log(c, `${Z.n}에 거점을 마련했다. 안에 있는 동안은 누구에게도 들키지 않는다.`, 'good'); return; }
       if (a.k === 'hunt') {
         if (Math.random() < 0.25) { this.log(c, '한참을 뒤쫓았지만 짐승의 흔적을 놓쳤다.'); return; }
@@ -235,12 +278,13 @@
         const pl = PLACES[a.p], used = s.pv[pl.id] || 0;
         this.xp(c, 4 + pl.diff * 2); c.visits[pl.id] = (c.visits[pl.id] || 0) + 1; s.pv[pl.id] = used + 1;
         { // 조우: 같은 구역을 뒤지다 마주친다. 마주친 쪽이 선제공격할 수 있다.
-          const near = shuffle(this.list.filter(o => o.alive && o !== c && o.zone === z && !o.inBase));
-          const hit = near.find(o => Math.random() < (s.final ? 0.75 : 0.35) + st.luk * 0.04 + (c.grudge === o.id ? 0.25 : 0));
+          const near = shuffle(this.list.filter(o => o.alive && o !== c && o.zone === z && !o.inBase && o.id !== c.ally));
+          const wxB = (s.wx.day ? 0 : 0.1) - (s.wx.w === 'fog' ? 0.1 : 0);
+          const hit = near.find(o => Math.random() < ((s.final ? 0.75 : 0.35) + st.luk * 0.04 + wxB + (c.grudge === o.id ? 0.25 : 0)) * (o.skill === 'stealth' ? 0.6 : 1));
           if (hit) { c.seen[hit.id] = 1; c.enc = { id: hit.id, t: s.t }; this.log(c, `${J(hit.name, '과', '와')} 마주쳤다! 상대는 아직 이쪽을 눈치채지 못했다.`, 'warn'); return; }
         }
         const r = Math.random(), draw = () => { const k = pickW(Math.random() < 0.3 ? Z.res : CATS[pl.cat].res); return k === 'crate' ? pick(CRATE) : k; };
-        const pEmpty = Math.min(0.65, 0.04 + used * 0.09), pMob = 0.03 + pl.diff * 0.045, pCrate = 0.02 + pl.diff * 0.06;
+        const pEmpty = Math.min(0.65, 0.04 + used * 0.09) * (c.skill === 'scav' ? 0.5 : 1), pMob = 0.03 + pl.diff * 0.045, pCrate = 0.02 + pl.diff * 0.06;
         if (r < pEmpty) { this.log(c, `${pl.n} — ` + pick(['허탕이었다. 쓸 만한 것은 누가 이미 가져간 뒤다.', '바람 소리에 놀라 한참을 숨어 있었다. 얻은 것은 없다.', '샅샅이 뒤졌지만 아무것도 찾지 못했다.'])); return; }
         if (r < pEmpty + pMob) { const mob = pickW({ chicken: 2, boar: 3, dog: 3, wolf: 3, bear: 1 }); this.log(c, `${pl.n} — 안쪽에서 소리가 난다. ${J(MOBS[mob].n, '이', '가')} 튀어나왔다!`, 'bad'); this.skirmish(c, { mobTy: mob }, { first: 'b' }); return; }
         if (r < pEmpty + pMob + pCrate) {
@@ -248,7 +292,7 @@
           for (const g of got) this.giveOrPile(c, g, 1);
           this.log(c, `${pl.n} — 보급 상자를 찾았다! ${JL(got, '을', '를')} 얻었다.`, 'good'); return;
         }
-        const got = [draw()]; if (Math.random() < 0.3 + st.luk * 0.06) got.push(draw()); if (pl.diff > 1 && Math.random() < 0.25 * (pl.diff - 1)) got.push(draw());
+        const got = [draw()]; if (Math.random() < 0.3 + st.luk * 0.06 + (c.skill === 'scav' ? 0.3 : 0) - (s.wx.day ? 0 : 0.1)) got.push(draw()); if (pl.diff > 1 && Math.random() < 0.25 * (pl.diff - 1)) got.push(draw());
         for (const g of got) this.giveOrPile(c, g, 1);
         this.log(c, `${J(pl.n, '을', '를')} 뒤져 ${JL(got, '을', '를')} 얻었다.`);
       }
@@ -265,6 +309,7 @@
       let m = mult, tag = '';
       if (A.wc === 'spear' && Math.random() < 0.25) { m *= 1.6; tag = ' 찌르기!'; }
       if (D.wc === 'sword' && Math.random() < 0.2) { m *= 0.5; tag += ' (흘려냄)'; }
+      if (A.mob && D.c && D.c.skill === 'hunter') m *= 0.7;
       const crit = Math.random() < 0.05 + A.luk * 0.02; if (crit) { m *= 1.5; tag = ' 급소!' + tag; }
       const v = Math.max(1, Math.round(A.atk * (0.85 + Math.random() * 0.3) * m * 100 / (100 + D.def * 2.5)));
       D.hp = Math.max(0, D.hp - v);
@@ -278,7 +323,7 @@
     tryFlee(F, O, L) {
       if (!F.c || F.hp > F.mh * 0.3 || F.hp <= 0) return false;
       const c = F.c, adj = ZONES[c.zone].adj.filter(z => this.s.zs[z] < 2);
-      if (!adj.length || Math.random() > Math.max(0.15, Math.min(0.85, 0.4 + (F.agi - O.agi) * 0.06))) { L.push({ m: `${J(F.name, '이', '가')} 달아나려 했지만 붙잡혔다`, k: 'bad' }); return false; }
+      if (!adj.length || Math.random() > Math.max(0.15, Math.min(0.9, 0.4 + (F.agi - O.agi) * 0.06 + (c.skill === 'runner' ? 0.2 : 0) + (this.s.wx.w === 'fog' ? 0.15 : 0)))) { L.push({ m: `${J(F.name, '이', '가')} 달아나려 했지만 붙잡혔다`, k: 'bad' }); return false; }
       c.zone = pick(adj); c.seen = {}; L.push({ m: `${J(F.name, '이', '가')} ${J(ZONES[c.zone].n, '으로', '로')} 달아났다`, k: 'warn' }); return true;
     }
     // 선제공격: 조우한 쪽만 때린다. 맞은 쪽은 그 자리에서 되받아치지 못한다.
@@ -286,7 +331,7 @@
     static noiseLife(len) { return Math.max(45, len * 0.25); }
     noise(z, kind) {
       const s = this.s; s.noise = s.noise.filter(n => n.z !== z && s.t - n.t < World.noiseLife(s.len)); s.noise.push({ z, t: s.t, k: kind });
-      const near = [z].concat(ZONES[z].adj);
+      const near = s.wx.w === 'rain' ? [z] : [z].concat(ZONES[z].adj);
       for (const c of this.alive()) if (near.includes(c.zone) && !(c.lastNoise && c.lastNoise.z === z && s.t - c.lastNoise.t < 15)) { c.lastNoise = { z, t: s.t }; this.log(c, c.zone === z ? '바로 근처에서 싸우는 소리가 난다!' : `${ZONES[z].n} 쪽에서 소란이 들린다.`, 'warn'); }
     }
     strike(a, b) {
@@ -294,7 +339,7 @@
       this.noise(a.zone, 'fight'); a.act = null; if (b.act && (b.act.k === 'rest' || b.act.k === 'explore' || b.act.k === 'hunt')) b.act = null;
       if (a.lines.meet) L.push({ m: `${a.name}: “${a.lines.meet}”`, k: 'talk' });
       const n = A.wc === 'sword' && Math.random() < 0.35 ? 3 : 2;
-      for (let i = 0; i < n && B.hp > 0; i++) this.hit(A, B, 1.25 * (i === 0 && A.wc === 'bow' ? 1.6 : 1) * (A.wc === 'spear' ? 1.15 : 1), L);
+      for (let i = 0; i < n && B.hp > 0; i++) this.hit(A, B, (a.skill === 'brawler' ? 1.25 : 1) * 1.25 * (i === 0 && A.wc === 'bow' ? 1.6 : 1) * (A.wc === 'spear' ? 1.15 : 1), L);
       const dealt = hp0.b - Math.round(B.hp), dead = B.hp <= 0;
       L.push({ m: dead ? `${J(b.name, '이', '가')} 쓰러졌다.` : `${J(b.name, '은', '는')} 비틀거리며 몸을 숨겼다.`, k: dead ? 'bad' : 'sys' });
       const rec = (c, ini) => { c.fight = { t: s.t, zone: a.zone, foe: { id: (ini ? b : a).id }, me0: ini ? hp0.a : hp0.b, op0: ini ? hp0.b : hp0.a, opEnd: Math.max(0, Math.round((ini ? B : A).hp)), opMh: (ini ? B : A).mh, ini, res: ini ? (dead ? 'win' : 'hit') : (dead ? 'lose' : 'ambushed'), log: L.slice(), ack: false }; };
@@ -336,14 +381,56 @@
         this.log(c, `${head} — ${RES[res]}. (체력 ${Math.round(me.hp)}/${me.mh})`, res === 'win' ? 'good' : res === 'lose' ? 'bad' : 'warn');
       };
       record(a, 'a'); if (!mob) record(b, 'b');
-      if (end === 'b' && mob) { const M = MOBS[b.mobTy]; for (const d of M.drops) this.giveOrPile(a, d, 1); this.xp(a, M.xp); this.log(a, `${J(M.n, '을', '를')} 쓰러뜨렸다. ${JL(M.drops, '을', '를')} 얻었다.`, 'good'); }
+      if (end === 'b' && mob) { const M = MOBS[b.mobTy]; for (const d of M.drops.concat(a.skill === 'hunter' ? [pick(M.drops)] : [])) this.giveOrPile(a, d, 1); this.xp(a, M.xp); this.log(a, `${J(M.n, '을', '를')} 쓰러뜨렸다. ${JL(M.drops, '을', '를')} 얻었다.`, 'good'); }
       else if (end === 'a') this.kill(a, mob ? null : b, mob ? `${MOBS[b.mobTy].n}에게 당함` : `${b.name}에게 당함`);
       else if (end === 'b') this.kill(b, a, `${a.name}에게 당함`);
       for (const c of [a, mob ? null : b]) if (c && c.alive) c.seenAt = Math.max(c.seenAt, s.t - IDLE + 30);
     }
+    makeAlly(a, b) {
+      a.ally = b.id; b.ally = a.id; a.allyReq = b.allyReq = 0;
+      this.log(a, `${J(b.name, '과', '와')} 동맹을 맺었다. 서로 조우해도 공격하지 않고, 서로의 위치를 안다.`, 'good');
+      this.log(b, `${J(a.name, '과', '와')} 동맹을 맺었다. 서로 조우해도 공격하지 않고, 서로의 위치를 안다.`, 'good');
+    }
+    breakAlly(c, msg) {
+      const o = this.s.chars[c.ally]; c.ally = 0; if (o && o.ally === c.id) { o.ally = 0; this.log(o, msg, 'bad'); } this.log(c, msg, 'bad');
+    }
+    spawnDrop() {
+      const s = this.s, open = ZONES.map((_, i) => i).filter(i => s.zs[i] === 0); if (!open.length) return;
+      const z = pick(open), items = shuffle(DROP_POOL.slice()).slice(0, 3); s.drop = { z, t: s.t, items };
+      this.feed(`📦 하늘에서 보급품이 떨어졌다 — ${ZONES[z].n}.`, 'warn');
+    }
+    setWeather() {
+      const s = this.s; s.wx = { day: s.phase % 2 === 0, w: pickW({ clear: 3, rain: 1, fog: 1 }) };
+      this.feed(`${s.wx.day ? '☀ 낮이 밝았다' : '☾ 밤이 깊었다'} · ${WEATHER[s.wx.w][0]}${s.wx.w === 'clear' ? '' : ' — ' + WEATHER[s.wx.w][1]}`, 'sys');
+    }
+    closeZone(z) {
+      const s = this.s; if (s.zs[z] === 2) return;
+      s.zs[z] = 2; s.order = s.order.filter(q => q !== z); delete s.piles[z]; if (s.drop && s.drop.z === z) s.drop = null;
+      for (const c of this.alive()) {
+        if (c.base && c.base.zone === z) { c.base = null; c.inBase = false; this.log(c, `${ZONES[z].n}의 거점이 폐쇄와 함께 무너졌다. 창고의 물건은 건지지 못했다.`, 'bad'); }
+        if (c.zone !== z) continue;
+        c.zone = this.refuge(z); c.act = null; c.seen = {}; c.enc = null; c.hp = Math.max(1, c.hp - this.stats(c).maxHp * 0.15);
+        this.log(c, `${J(ZONES[z].n, '이', '가')} 폐쇄되었다. 쫓기듯 ${J(ZONES[c.zone].n, '으로', '로')} 빠져나왔다. (체력 -15%)`, 'bad');
+      }
+    }
+    // 운영자(GM) 명령: 온라인은 방장, 오프라인은 본인
+    gm(m) {
+      const s = this.s; if (!m || !s.started) return '시작한 뒤에 쓸 수 있습니다';
+      switch (m.k) {
+        case 'pause': s.paused = !s.paused; this.feed(s.paused ? '⏸ 운영자가 판을 멈췄다.' : '▶ 판이 다시 움직인다.', 'sys'); return;
+        case 'say': { const t = clean(m.m, 120); if (t) this.feed(`📢 ${t}`, 'gm'); return; }
+        case 'close': { const z = m.z | 0; if (!ZONES[z] || s.zs[z] === 2) return '닫을 수 없는 구역입니다'; if (s.zs.filter(v => v < 2).length <= 1) return '마지막 구역은 닫을 수 없습니다'; this.closeZone(z); this.feed(`⛔ 운영자가 ${J(ZONES[z].n, '을', '를')} 즉시 폐쇄했다.`, 'bad'); return; }
+        case 'kill': { const c = s.chars[m.who | 0]; if (!c || !c.alive) return '대상이 없습니다'; this.kill(c, null, '운영자에 의해 탈락'); return; }
+        case 'skip': if (s.final) return '이미 최종 구역입니다'; s.nextClose = s.t; return;
+        case 'drop': this.spawnDrop(); return;
+      }
+      return '알 수 없는 명령입니다';
+    }
     kill(c, killer, cause) {
       const s = this.s;
-      c.alive = false; c.hp = 0; c.act = null; c.inBase = false; c.battle = 0; s.rank.unshift(c.id);
+      c.alive = false; c.hp = 0; c.act = null; c.inBase = false; c.battle = 0; c.enc = null; s.rank.unshift(c.id);
+      if (c.ally) this.breakAlly(c, `${c.name}의 탈락으로 동맹이 끝났다.`);
+      c.spec = killer && killer.alive ? killer.id : ((this.alive()[0] || {}).id || 0);
       const items = c.inv.filter(Boolean); c.inv = new Array(INV).fill(null);
       for (const k of SLOTS) if (c.eq[k] && ITEMS[c.eq[k]].tier > 1) items.push({ id: c.eq[k], n: 1 });
       for (const it of items) { const left = killer ? this.give(killer, it.id, it.n) : it.n; this.pile(c.zone, it.id, left); }
@@ -376,22 +463,16 @@
     stepZones() {
       const s = this.s; s.phase++; s.nextClose = s.t + s.len;
       const closing = s.zs.map((v, i) => v === 1 ? i : -1).filter(i => i >= 0);
-      for (const z of closing) s.zs[z] = 2;
-      for (const z of closing) {
-        delete s.piles[z];
-        for (const c of this.alive()) {
-          if (c.base && c.base.zone === z) { c.base = null; c.inBase = false; this.log(c, `${ZONES[z].n}의 거점이 폐쇄와 함께 무너졌다. 창고의 물건은 건지지 못했다.`, 'bad'); }
-          if (c.zone !== z) continue;
-          c.zone = this.refuge(z); c.act = null; c.seen = {}; c.hp = Math.max(1, c.hp - this.stats(c).maxHp * 0.15);
-          this.log(c, `${J(ZONES[z].n, '이', '가')} 폐쇄되었다. 쫓기듯 ${J(ZONES[c.zone].n, '으로', '로')} 빠져나왔다. (체력 -15%)`, 'bad');
-        }
-      }
+      for (const z of closing) this.closeZone(z);
+      this.setWeather();
+      if (s.phase === 2 || s.phase === 4 || s.phase === 6) this.spawnDrop();
       if (closing.length) this.feed(`⛔ ${closing.map(z => ZONES[z].n).join(', ')} 폐쇄.`, 'bad');
       const next = s.order.length > 1 ? s.order.splice(0, Math.min(s.order.length > 12 ? 3 : 2, s.order.length - 1)) : [];
       for (const z of next) s.zs[z] = 1;
       if (next.length) this.feed(`⚠ 다음 폐쇄 예고: ${next.map(z => ZONES[z].n).join(', ')}.`, 'warn');
       else if (!s.final) {
         s.final = true; s.duelT = s.t + Math.max(20, s.len / 5);
+        for (const c of this.alive()) if (c.ally) this.breakAlly(c, '최종 구역 — 동맹은 여기까지다.');
         for (const c of this.alive()) if (c.base) { for (const it of c.base.stash) this.giveOrPile(c, it.id, it.n); c.base = null; c.inBase = false; this.log(c, '숨을 곳이 사라졌다. 거점은 더 이상 안전하지 않다.', 'bad'); }
         this.feed(`최종 구역은 ${ZONES[s.order[0]].n}. 이제 숨을 곳은 없다.`, 'warn');
       }
@@ -399,7 +480,7 @@
 
     // ---------- 시간 진행 ----------
     advance(dt) {
-      const s = this.s; s.t += dt; if (!s.started || s.over) return;
+      const s = this.s; if (s.paused && s.started && !s.over) return; s.t += dt; if (!s.started || s.over) return;
       if (!s.final && s.t >= s.nextClose) this.stepZones();
       if (s.noise.length && s.noise[0] && s.t - s.noise[0].t > World.noiseLife(s.len)) s.noise = s.noise.filter(n => s.t - n.t < World.noiseLife(s.len));
       if (s.t >= s.pvT) { s.pvT = s.t + s.len / 3; for (const k in s.pv) if (--s.pv[k] <= 0) delete s.pv[k]; }
@@ -409,7 +490,7 @@
         c.hunger = Math.max(0, c.hunger - dt * 100 / (s.len * 2.5) * (c.inBase ? 0.5 : 1) * Math.max(0.5, 1 - 0.04 * c.st.con));
         if (c.hunger <= 0 && !c.battle) c.hp = Math.max(1, c.hp - dt * m.maxHp / (s.len * 2));
         c.en = Math.min(100, c.en + dt * (rest ? World.restRate(s.len, c.inBase) * (1 + 0.1 * (c.st.end || 0)) : World.idleRate(s.len)));
-        if (rest) { c.hp = Math.min(m.maxHp, c.hp + dt * m.maxHp / (s.len * 0.5) * (c.inBase ? 2 : 0.6)); if (c.en >= 100 && (c.hp >= m.maxHp || !c.inBase)) { c.act = null; this.log(c, '충분히 쉬었다.'); } }
+        if (rest) { c.hp = Math.min(m.maxHp, c.hp + dt * m.maxHp / (s.len * 0.5) * (c.inBase ? 2 : 0.6) * (c.skill === 'medic' ? 2 : 1)); if (c.en >= 100 && (c.hp >= m.maxHp || !c.inBase)) { c.act = null; this.log(c, '충분히 쉬었다.'); } }
         if (c.hp > m.maxHp) c.hp = m.maxHp;
         if (c.act && (c.act.leg || c.act.end) && s.t >= (c.act.leg || c.act.end)) this.finish(c);
         if (!c.alive) continue;
@@ -417,6 +498,7 @@
         if (c.bot) { if (!c.act && !c.battle && s.t >= c.think) this.think(c); }
         else if (!c.inBase && !c.battle && !c.act && c.base && c.base.zone === c.zone && s.t - c.seenAt > IDLE) { c.inBase = true; c.seen = {}; this.log(c, '한동안 움직임이 없어, 거점으로 돌아가 문을 잠갔다.', 'sys'); }
       }
+      if (this.alive().length <= 3) for (const c of this.alive()) if (c.ally) this.breakAlly(c, '남은 사람이 셋 — 동맹은 여기까지다.');
       if (s.final && !s.over && s.t >= s.duelT) {
         s.duelT = s.t + Math.max(20, s.len / 5);
         const free = shuffle(this.alive().filter(c => !c.battle));
@@ -439,6 +521,8 @@
       if (c.enc) { const o = s.chars[c.enc.id]; if (o && o.alive && o.zone === z && !o.inBase && c.en >= COST.attack && hr > 0.35) { const om = this.stats(o); if (c.grudge === o.id || m.atk * c.hp >= om.atk * o.hp * 0.6 || Math.random() < 0.3) return go({ k: 'attack', who: o.id }); } this.cmd(c.id, { k: 'ignore' }); }
       if (c.fight && !c.fight.ack && c.fight.res === 'ambushed') { c.fight.ack = true; const safe = ZONES[z].adj.filter(a => s.zs[a] === 0); if (hr < 0.5 && safe.length && c.en >= COST.move) return go({ k: 'move', to: pick(safe) }); }
       if (false) { const o = null; if (o) return go({ k: 'attack', who: o.id }); }
+      if (c.allyReq) this.cmd(c.id, { k: Math.random() < 0.5 ? 'allyOk' : 'allyNo' });
+      if (s.drop && hr > 0.5) { if (s.drop.z === z) return go({ k: 'openDrop' }); const rt = this.route(z, s.drop.z); if (rt && rt.length <= 3 && c.en >= this.cost(c, World.moveCost(rt.length)) + 15 && Math.random() < 0.5) return go({ k: 'move', to: s.drop.z }); }
       if (s.piles[z] && s.piles[z].length && c.inv.includes(null)) this.cmd(c.id, { k: 'loot' });
       const r = Math.random();
       { const nz = s.noise.filter(n => n.k === 'fight' && ZONES[z].adj.includes(n.z) && s.zs[n.z] === 0); if (nz.length && c.en >= COST.move + 20) { if (hr > 0.75 && Math.random() < 0.35) return go({ k: 'move', to: nz[0].z }); } }
@@ -452,9 +536,10 @@
     view(id) {
       const s = this.s, c = s.chars[id], r = Math.round;
       const v = { t: s.t, started: s.started, over: s.over, tempo: s.tempo, len: s.len, nextClose: s.nextClose, phase: s.phase, final: s.final, zs: s.zs, feed: s.feed.slice(-40), chat: s.chat.slice(-60), roster: this.list.map(o => ({ id: o.id, al: o.alive ? 1 : 0, k: o.kills, on: o.bot || o.online ? 1 : 0 })) };
+      v.wx = s.wx; v.paused = !!s.paused; v.drop = s.drop ? { z: s.drop.z } : null;
       if (!c) return v;
       const m = this.stats(c);
-      { const near = [c.zone].concat(ZONES[c.zone].adj); v.noise = c.alive ? s.noise.filter(n => near.includes(n.z) && s.t - n.t < World.noiseLife(s.len)).map(n => ({ z: n.z, age: (s.t - n.t) / World.noiseLife(s.len), k: n.k })) : []; }
+      { const near = s.wx.w === 'rain' ? [c.zone] : [c.zone].concat(ZONES[c.zone].adj); v.noise = c.alive ? s.noise.filter(n => near.includes(n.z) && s.t - n.t < World.noiseLife(s.len)).map(n => ({ z: n.z, age: (s.t - n.t) / World.noiseLife(s.len), k: n.k })) : []; }
       v.me = { id: c.id, hp: r(c.hp), hunger: r(c.hunger), en: r(c.en), zone: c.zone, alive: c.alive, lvl: c.lvl, xp: c.xp, need: c.lvl * 30, kills: c.kills, inv: c.inv, eq: c.eq, act: c.act, base: c.base, inBase: c.inBase, st: m, raw: c.st, sp: c.sp || 0, bf: { atk: c.bf.atk > s.t, agi: c.bf.agi > s.t }, log: c.log, visits: c.visits };
       if (c.alive && s.started) {
         const others = this.list.filter(o => o.alive && o !== c && o.zone === c.zone && !o.inBase);
@@ -465,6 +550,9 @@
           seen: c.inBase ? [] : others.filter(o => c.seen[o.id]).map(o => { const h = o.hp / this.stats(o).maxHp; return { id: o.id, lvl: o.lvl, w: o.eq.weapon, cond: h > 0.7 ? '멀쩡함' : h > 0.35 ? '다침' : '빈사', busy: o.battle ? 1 : 0 }; }),
         };
       }
+      v.me.skill = c.skill; v.me.ally = 0; v.me.allyReq = c.allyReq || 0;
+      if (c.ally && s.chars[c.ally]) { const o = s.chars[c.ally]; v.me.ally = { id: o.id, zone: o.zone, hp: Math.round(o.hp), mh: this.stats(o).maxHp, lvl: o.lvl }; }
+      if ((!c.alive || s.over) && c.spec && s.chars[c.spec]) { const o = s.chars[c.spec]; v.spec = { id: o.id, zone: o.zone, al: o.alive, hp: Math.round(o.hp), mh: this.stats(o).maxHp, lvl: o.lvl, log: o.log.slice(-30) }; }
       const F = c.fight;
       if (F && !F.ack && s.t - F.t < Math.max(90, s.len * 0.3)) v.fight = { ...F, foeNow: F.foe.id ? (() => { const o = s.chars[F.foe.id]; return { id: o.id, hp: Math.round(o.hp), mh: this.stats(o).maxHp, al: o.alive, zone: o.zone }; })() : null };
       return v;
@@ -472,5 +560,5 @@
     people() { return this.list.map(c => ({ id: c.id, name: c.name, color: c.color, img: c.img, bot: c.bot, bio: c.bio })); }
   }
 
-  Object.assign(X, { STAT_FX, START_PTS, STAT_MAX, J, SLOTS, World, cleanChar, TEMPO, DUR, COST, INV, STASH });
+  Object.assign(X, { SKILLS, WEATHER, STAT_FX, START_PTS, STAT_MAX, J, SLOTS, World, cleanChar, TEMPO, DUR, COST, INV, STASH });
 })(typeof module !== 'undefined' ? module.exports : (self.GameWorld = {}), typeof require !== 'undefined' ? require('./data.js') : self.GameData);

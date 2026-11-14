@@ -70,6 +70,7 @@ new WebSocketServer({ server, maxPayload: 100000 }).on('connection', ws => {
     if (!room) return;
     const w = room.world;
     if (m.t === 'cmd') { const e = w.cmd(cl.id, m.c); if (e) send(ws, { t: 'toast', m: e }); push(room, cl); }
+    else if (m.t === 'gm') { if (room.gm !== cl.id) return send(ws, { t: 'toast', m: '방장만 쓸 수 있습니다' }); const e = w.gm(m.c); if (e) send(ws, { t: 'toast', m: e }); save(room); for (const k of room.clients) push(room, k); }
     else if (m.t === 'start' && room.gm === cl.id && !w.s.started) { w.addBots(room.bots); w.start(); people(room); save(room); }
     else if (m.t === 'reset' && room.gm === cl.id && w.s.over) {
       const old = w.s.chars, nw = World.create({ tempo: w.s.tempo }), map = {};

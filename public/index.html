@@ -289,6 +289,34 @@ input[type=text], input[type=password], select { border-radius: 0; background: r
 .srow small { color: var(--dim); font-size: 11px; line-height: 1.35; }
 .srow .plus { padding: 1px 8px; font-size: 12px; }
 #stats { gap: 6px !important; }
+/* 날씨 카드 */
+.wxrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.wxrow .help { grid-column: 1 / -1; }
+.wxc { display: grid; justify-items: center; gap: 2px; padding: 8px 6px 6px; border: 1px solid var(--line2); background: linear-gradient(180deg, rgba(20,40,52,.6), rgba(4,10,14,.8)); clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 100%, 0 100%); }
+.wxc.on { border-color: var(--accent); background: linear-gradient(180deg, rgba(63,214,232,.28), rgba(4,12,16,.85)); }
+.wxc b { font-size: 24px; line-height: 1; color: #e9fbff; } .wxc.on b { text-shadow: 0 0 10px var(--accent); }
+.wxc span:last-child { font-size: 12px; color: var(--accent); }
+/* 밤 · 날씨: 지도 분위기 */
+body[data-wx*="night"] #mapInner canvas { filter: brightness(.62) saturate(.8) hue-rotate(10deg); }
+body[data-wx*="fog"] #mapView::after { background-color: rgba(190,210,220,.12); }
+body[data-wx*="rain"] #mapInner::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(105deg, rgba(160,200,230,.12) 0 1px, transparent 1px 9px); }
+/* 스킬 · 동맹 */
+.skillbox { display: grid; grid-template-columns: auto 1fr; gap: 0 10px; align-items: baseline; padding: 6px 10px; border: 1px solid var(--line2); background: rgba(63,214,232,.06); }
+.skillbox .en { grid-row: span 2; } .skillbox b { color: var(--accent); } .skillbox small { color: var(--mute); font-size: 12px; }
+.allyreq { border: 1px solid var(--gold); background: rgba(232,181,74,.1); padding: 8px 10px; display: grid; gap: 6px; }
+.allybox { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 4px; }
+#mapSvg .dropm rect { fill: rgba(232,181,74,.25); stroke: var(--gold); } #mapSvg .dropm text { font-size: 13px; }
+#mapSvg .dropm { animation: noisePulse 1.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.log .gm span { color: var(--accent); font-weight: 600; }
+#status .row button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); }
+/* 결과 카드 */
+#card { position: fixed; inset: 0; z-index: 30; background: rgba(2,6,9,.82); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.rcard { width: min(440px, 100%); display: grid; gap: 14px; padding: 20px; background: linear-gradient(180deg, #0f2230, #070d13); border: 1px solid var(--line2); box-shadow: 0 0 0 1px rgba(63,214,232,.15), 0 20px 60px rgba(0,0,0,.6); clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px); }
+.rhead { display: flex; justify-content: space-between; align-items: center; }
+.rwin { display: flex; gap: 14px; align-items: center; } .rname { font-size: 26px; font-weight: 600; text-shadow: 0 0 14px rgba(63,214,232,.5); } .rwin small { color: var(--mute); }
+.rstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .rstats div { display: grid; gap: 2px; padding: 8px; border: 1px solid var(--line); background: rgba(0,0,0,.3); } .rstats b { font-size: 24px; }
+.rlist { display: grid; gap: 4px; } .crow { display: grid; grid-template-columns: 22px 30px 1fr auto; gap: 10px; align-items: center; padding: 4px 6px; } .crow.me { background: rgba(63,214,232,.12); box-shadow: inset 2px 0 0 var(--accent); } .crow small { color: var(--dim); }
+.rtalk { display: grid; gap: 4px; border-left: 2px solid var(--gold); padding-left: 10px; } .rtalk p { margin: 0; color: var(--gold); font-style: italic; font-size: 13px; }
 </style>
 
 <div id="menu">
@@ -307,6 +335,7 @@ input[type=text], input[type=password], select { border-radius: 0; background: r
         </div>
         <div class="field"><label class="lab" for="cbio">한 줄 소개</label><input type="text" id="cbio" maxlength="60" placeholder="예: 보건부 2학년. 겁이 많다."></div>
         <div class="field"><span class="lab">색</span><div class="row" id="colors"></div></div>
+        <div class="field"><span class="lab">고유 스킬</span><div class="row" id="skills" style="align-items:stretch"></div></div>
         <div class="field"><span class="lab">처음 쥔 무기</span><div class="row" id="weapons" style="align-items:stretch"></div></div>
         <div class="field"><span class="lab">능력치 · 남은 포인트 <b id="left"></b></span><div id="stats" style="display:grid;gap:8px"></div></div>
         <div class="field"><span class="lab">대사</span>
@@ -369,6 +398,7 @@ input[type=text], input[type=password], select { border-radius: 0; background: r
     </div>
   </div>
 </div>
+<div id="card" hidden></div>
 <div id="toast" hidden></div>
 
 <script src="/shared/data.js"></script>

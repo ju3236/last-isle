@@ -29,6 +29,7 @@
   function renderCreator() {
     $('facePrev').innerHTML = face({ name: char.name || '?', color: char.color, img: char.img }, 84);
     $('colors').innerHTML = COLORS.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-pressed="${c === char.color}" aria-label="색 ${c}"></button>`).join('');
+    $('skills').innerHTML = Object.keys(G.SKILLS).map(k => `<button class="wp" data-sk="${k}" aria-pressed="${k === char.skill}"><b>${G.SKILLS[k][0]}</b><small>${G.SKILLS[k][1]}</small></button>`).join('');
     $('weapons').innerHTML = Object.keys(WEAPONS).map(k => `<button class="wp" data-w="${k}" aria-pressed="${k === char.weapon}"><b>${ITEMS[k + 1].e} ${WEAPONS[k].n}</b><small>${WEAPONS[k].d}</small></button>`).join('');
     const left = G.START_PTS - Object.values(char.st).reduce((a, b) => a + b, 0);
     $('left').textContent = left;
@@ -41,7 +42,7 @@
   }
   $('menu').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.c) char.color = b.dataset.c; else if (b.dataset.w) char.weapon = b.dataset.w;
+    if (b.dataset.c) char.color = b.dataset.c; else if (b.dataset.w) char.weapon = b.dataset.w; else if (b.dataset.sk) char.skill = b.dataset.sk;
     else if (b.dataset.s) { char.st[b.dataset.s] = Math.max(0, Math.min(6, char.st[b.dataset.s] + +b.dataset.d)); } else return;
     renderCreator();
   });
@@ -62,7 +63,7 @@
   const myChar = () => ({ ...char, name: char.name.trim() || '이름 없는 생존자' });
 
   // ================= 세션 =================
-  let mode = null, world = null, ws = null, myId = 0, view = null, gm = false, people = {}, loop = 0, tab = 'map', sel = -1, speed = 1, roomName = '', saveN = 0, askLeave = false;
+  let showCard = false, mode = null, world = null, ws = null, myId = 0, view = null, gm = false, people = {}, loop = 0, tab = 'map', sel = -1, speed = 1, roomName = '', saveN = 0, askLeave = false;
   function enter() { for (const k in cache) delete cache[k]; view = null; tab = 'map'; sel = -1; askLeave = false; $('menu').hidden = true; $('game').hidden = false; scrollTo(0, 0); initMap(); }
   function toMenu() {
     clearInterval(loop); if (ws) { const w = ws; ws = null; w.close(); }
@@ -101,12 +102,16 @@
     sock.onclose = () => { if (ws === sock) { ws = null; toMenu(); toast('서버와 연결이 끊어졌습니다'); } };
     sock.onerror = () => { if (ws === sock && $('game').hidden) $('onErr').textContent = '서버에 연결할 수 없습니다'; };
   };
+  function gmSend(c) {
+    if (mode === 'off') { const e = world.gm(c); if (e) toast(e); stepOff(0); }
+    else if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'gm', c }));
+  }
   function send(c) {
     if (mode === 'off') { const e = world.cmd(myId, c); if (e) toast(e); stepOff(0); }
     else if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'cmd', c }));
   }
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-cmd],[data-tab],[data-slot],[data-do],[data-cf],[data-ci],[data-goal]'); if (!b || b.disabled) return;
+    const b = e.target.closest('[data-cmd],[data-tab],[data-slot],[data-do],[data-cf],[data-ci],[data-goal],[data-gm]'); if (!b || b.disabled) return;
     if (b.dataset.cmd) send(JSON.parse(b.dataset.cmd));
     else if (b.dataset.tab) { tab = b.dataset.tab; render(); }
     else if (b.dataset.slot) { sel = sel === +b.dataset.slot ? -1 : +b.dataset.slot; render(); }
@@ -117,6 +122,8 @@
     else if (b.dataset.goal) { goal = goal === b.dataset.goal ? '' : b.dataset.goal; render(); }
     else if (b.dataset.do === 'speed') { speed = speed === 1 ? 3 : 1; render(); }
     else if (b.dataset.do === 'start') ws && ws.send(JSON.stringify({ t: 'start' }));
+    else if (b.dataset.gm) { const c = JSON.parse(b.dataset.gm); if (c.k === 'say') { c.m = ($('gmSay') || {}).value || ''; if ($('gmSay')) $('gmSay').value = ''; } if (c.k === 'close') c.z = +($('gmZone') || {}).value; if (c.k === 'kill') c.who = +($('gmWho') || {}).value; gmSend(c); }
+    else if (b.dataset.do === 'card') { showCard = !showCard; render(); }
     else if (b.dataset.do === 'reset') { if (mode === 'off') { toMenu(); $('offBtn').click(); } else ws && ws.send(JSON.stringify({ t: 'reset' })); }
   });
   document.addEventListener('input', e => { if (e.target.id === 'craftQ') { craftQ = e.target.value; const pos = e.target.selectionStart; delete cache.pane; render(); const el = $('craftQ'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } });
@@ -270,7 +277,10 @@
       h += `<g class="noise ${n.age < 0.25 ? 'fresh' : ''} ${n.k === 'mob' ? 'mob' : ''}" style="opacity:${op.toFixed(2)}"><title>${Z.n} · ${n.k === 'mob' ? '짐승 소란' : '싸움 소란'}</title><path d="M${x + 9} ${y} L${x + 18} ${y + 16} L${x} ${y + 16} Z"/><text x="${x + 9}" y="${y + 14}" text-anchor="middle">!</text></g>`;
     }
     const tag = (Z, s, cls) => { const w = s.length * 12 + 14; return `<g class="tag ${cls}"><rect x="${Z.x - w / 2}" y="${Z.y - 37}" width="${w}" height="18" rx="2"/><path d="M${Z.x - 4} ${Z.y - 19.5}h8l-4 5z"/><text x="${Z.x}" y="${Z.y - 24}" text-anchor="middle">${s}</text></g>`; };
-    if (me && v.started) { if (me.base && me.base.zone !== z) h += tag(ZONES[me.base.zone], '거점', 'base'); h += tag(ZONES[z], me.inBase ? '나 · 거점 안' : me.base && me.base.zone === z ? '나 · 거점' : '나', 'me'); }
+    if (v.drop) { const Z = ZONES[v.drop.z]; h += `<g class="dropm"><title>보급품</title><rect x="${Z.x - Z.n.length * 6.5 - 31}" y="${Z.y - 10}" width="20" height="20" rx="2"/><text x="${Z.x - Z.n.length * 6.5 - 21}" y="${Z.y + 5}" text-anchor="middle">📦</text></g>`; }
+    if (me && me.ally && me.ally.zone !== z) h += tag(ZONES[me.ally.zone], '동맹', 'base');
+    if (v.spec && !me.alive) h += tag(ZONES[v.spec.zone], '관전', 'me');
+    if (me && v.started && me.alive) { if (me.base && me.base.zone !== z) h += tag(ZONES[me.base.zone], '거점', 'base'); h += tag(ZONES[z], me.inBase ? '나 · 거점 안' : me.base && me.base.zone === z ? '나 · 거점' : '나', 'me'); }
     set('mapSvg', h);
     if (centerPending && me && v.started && $('mapView').clientWidth) {
       centerPending = false; fitMap();
@@ -346,6 +356,20 @@
   }
   document.addEventListener('pointerover', e => { const n = e.target.closest && e.target.closest('#mapSvg [data-zone]'); showPreview(n ? +n.dataset.zone : -1); });
   document.addEventListener('focusin', e => { const n = e.target.closest && e.target.closest('#mapSvg [data-zone]'); showPreview(n ? +n.dataset.zone : -1); });
+  // ---------- 결과 카드 (캡처해서 공유하기 좋게) ----------
+  function renderCard(v) {
+    const el = $('card'); if (!v.over || !showCard) { el.hidden = true; return; }
+    const P = people, rank = v.over.rank, win = P[rank[0]] || NOBODY, my = rank.indexOf(myId);
+    const talks = v.feed.filter(f => f.k === 'talk').slice(-4);
+    const top = rank.slice(0, 5).map((id, i) => { const p = P[id] || NOBODY, r = v.roster.find(x => x.id === id) || { k: 0 }; return `<div class="crow ${id === myId ? 'me' : ''}"><b class="num">${i + 1}</b>${face(p, 30)}<span>${esc(p.name)}${p.bot ? ' <small>AI</small>' : ''}</span><span class="num">${r.k} 처치</span></div>`; }).join('');
+    const html = `<div class="rcard"><div class="rhead"><span class="en">LAST ISLE // EXPERIMENT REPORT</span><button class="sm" data-do="card" aria-label="닫기">✕</button></div>
+      <div class="rwin">${face(win, 96)}<div><span class="en">LAST SURVIVOR</span><div class="rname">${esc(win.name)}</div><small>${esc(win.bio || '')}</small></div></div>
+      <div class="rstats"><div><span class="en">SURVIVORS</span><b class="num">${v.roster.length}</b></div><div><span class="en">TIME</span><b class="num">${clock(v.t)}</b></div><div><span class="en">MY RANK</span><b class="num">${my >= 0 ? my + 1 : '-'}</b></div></div>
+      <div class="rlist">${top}</div>
+      ${talks.length ? `<div class="rtalk">${talks.map(t => `<p>${esc(t.m)}</p>`).join('')}</div>` : ''}
+      <span class="lab">${esc(roomName)} · ${G.TEMPO[v.tempo].n}</span></div>`;
+    if (set('card', html)) el.hidden = false; else el.hidden = false;
+  }
   // ================= 화면 =================
   function count(me, id) { let n = 0; for (const s of me.inv) if (s && s.id === id) n += s.n; if (me.eq[ITEMS[id].t] === id) n++; return n; }
   function itemDesc(it) { if (it.tier) return [it.atk && `공격 +${it.atk}`, it.def && `방어 +${it.def}`, it.agi && `민첩 +${it.agi}`, it.luk && `운 +${it.luk}`].filter(Boolean).join(' · '); return it.d || (it.g ? '중간 재료' : '재료'); }
@@ -359,10 +383,13 @@
     const v = view; if (!v) return;
     const me = v.me, P = people, mine = P[myId] || NOBODY, alive = v.roster.filter(r => r.al).length;
     set('title', `<h1>최후의 섬</h1><span class="lab">${esc(roomName)} · ${G.TEMPO[v.tempo].n}</span><div class="row">${mode === 'off' ? `<button class="sm" data-do="speed">속도 ×${speed}</button>` : ''}${askLeave ? `<button class="sm" data-do="leave">메뉴로 (저장됨)</button><button class="sm" data-do="stay">계속하기</button>` : `<button class="sm" data-do="leave">나가기</button>`}</div>`);
-    set('clock', `<h3><span>경과</span><span class="lab">${v.final ? '최종 구역' : `${v.phase + 1}번째 밤`}</span></h3><div class="big num">${clock(v.t)}</div>
+    const wx = v.wx || { day: true, w: 'clear' };
+    set('clock', `<h3><span>경과</span><span class="lab">${v.paused ? '<span class="chip w">일시정지</span>' : v.final ? '최종 구역' : `${v.phase + 1}번째 ${wx.day ? '낮' : '밤'}`}</span></h3><div class="big num">${clock(v.t)}</div>
       <span class="${v.started && !v.over ? 'warn' : 'lab'}">${!v.started ? '시작 대기 중' : v.over ? '실험 종료' : v.final ? `숨을 곳 없음 · ${ZONES[v.zs.findIndex(x => x < 2)].n}` : `다음 폐쇄까지 ${clock(v.nextClose - v.t)}`}</span>
-      <span class="lab">남은 인원 ${alive} / ${v.roster.length} · 남은 구역 ${v.zs.filter(x => x < 2).length}</span>`);
-    set('tabs', [['map', '◈ 지도 · 탐험'], ['craft', '▤ 제작'], ['base', '⌂ 거점'], ['roster', '☰ 생존자']].map(([k, n]) => `<button data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join(''));
+      <span class="lab">남은 인원 ${alive} / ${v.roster.length} · 남은 구역 ${v.zs.filter(x => x < 2).length}</span>
+      ${v.started ? `<div class="wxrow"><div class="wxc ${wx.day ? 'on' : ''}"><span class="en">TIME</span><b>${wx.day ? '☀' : '☾'}</b><span>${wx.day ? '낮' : '밤'}</span></div><div class="wxc ${wx.w !== 'clear' ? 'on' : ''}"><span class="en">WEATHER</span><b>${{ clear: '◌', rain: '☂', fog: '≋' }[wx.w]}</b><span>${G.WEATHER[wx.w][0]}</span></div><p class="help">${wx.day ? '' : '밤: 조우 확률 상승, 수확 감소. '}${wx.w === 'clear' ? '' : G.WEATHER[wx.w][1]}</p></div>` : ''}`);
+    document.body.dataset.wx = v.started ? (wx.day ? '' : 'night ') + wx.w : '';
+    set('tabs', [['map', '◈ 지도 · 탐험'], ['craft', '▤ 제작'], ['base', '⌂ 거점'], ['roster', '☰ 생존자']].concat(gm ? [['gm', '⚙ 운영']] : []).map(([k, n]) => `<button data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join(''));
     const wasHidden = $('mapTab').hidden; $('mapTab').hidden = tab !== 'map'; $('pane').hidden = tab === 'map';
     if (wasHidden && tab === 'map') fitMap();
     setLog('chatLog', v.chat.map(c => `<div><span><b>${esc(c.n)}</b> ${esc(c.m)}</span></div>`).join('') || '<p class="help">아직 아무도 말하지 않았다.</p>');
@@ -375,6 +402,7 @@
       <div class="who">${face(mine, 56)}<div class="grow"><div class="nm">${esc(mine.name)}</div><small>Lv ${me.lvl} · 처치 ${me.kills}</small><small>${esc(mine.bio || '')}</small></div></div>
       <div class="row">${!me.alive ? '<span class="chip d">탈락</span>' : v.battle ? '<span class="chip d">교전 중</span>' : me.inBase ? '<span class="chip g">거점 안 · 안전</span>' : '<span class="chip g">양호</span>'}${me.hunger <= 0 ? '<span class="chip d">굶주림</span>' : me.hunger < 25 ? '<span class="chip w">배고픔</span>' : ''}${me.en < 15 ? '<span class="chip w">지침</span>' : ''}${me.bf.atk ? '<span class="chip g">투지</span>' : ''}${me.bf.agi ? '<span class="chip g">신속</span>' : ''}</div>
       <div class="meters">${meter('hp', '체력', me.hp, me.st.maxHp)}${meter('hun', '허기', me.hunger, 100)}${meter('', '스태미너', me.en, 100)}${meter('xp', '경험', me.xp, me.need)}</div>
+      <div class="skillbox"><span class="en">SKILL</span><b>${G.SKILLS[me.skill || 'scav'][0]}</b><small>${G.SKILLS[me.skill || 'scav'][1]}</small></div>
       ${radar(me.st)}
       <div class="stats5">${me.sp ? `<div class="sp">능력치 포인트 <b class="num">${me.sp}</b> — 올릴 능력치를 고른다</div>` : ''}${Object.keys(G.STAT_FX).map(k => `<div class="srow"><span class="sn">${G.STAT_FX[k][0]}</span><b class="num">${me.raw[k] || 0}</b><small>${G.STAT_FX[k][1]}</small>${me.sp && me.alive && (me.raw[k] || 0) < G.STAT_MAX ? `<button class="sm go plus" ${cmdAttr({ k: 'stat', s: k })} aria-label="${G.STAT_FX[k][0]} 올리기">+1</button>` : ''}</div>`).join('')}</div>
       <dl class="kvs"><dt>무기</dt><dd>${eqn('weapon')}</dd><dt>옷</dt><dd>${eqn('armor')}</dd><dt>머리</dt><dd>${eqn('head')}</dd><dt>팔</dt><dd>${eqn('arm')}</dd><dt>다리</dt><dd>${eqn('boots')}</dd><dt>거점</dt><dd>${me.base ? ZONES[me.base.zone].n : '<small>없음</small>'}</dd></dl>`);
@@ -390,16 +418,21 @@
     set('bag', bh);
     renderStatus(v, me, alive);
     if (tab === 'map') renderPlaces(v, me); else renderPane(v, me);
-    setLog('log', logHtml(me.log, true));
+    setLog('log', logHtml(!me.alive && v.spec ? v.spec.log : me.log, true));
+    $('logBox').querySelector('h3 span').textContent = !me.alive && v.spec ? `관전 · ${(P[v.spec.id] || NOBODY).name}의 기록` : '기록';
+    renderCard(v);
     // 근처 사람
     let ph;
     if (!v.started || !me.alive || !v.here) ph = '<h3><span>근처 사람</span></h3><p class="help">—</p>';
     else if (me.inBase) ph = '<h3><span>근처 사람</span></h3><p class="help">거점 안에서는 밖이 보이지 않고, 밖에서도 이곳을 찾지 못한다.</p>';
     else {
       const h = v.here, unseen = h.signs - h.seen.length;
-      ph = `<h3><span>근처 사람 · 본 적 있음 ${h.seen.length}</span><span class="lab">${unseen > 0 ? `기척 ${unseen > 1 ? '여럿' : '하나'}` : ''}</span></h3>` + h.seen.map(o => { const p = P[o.id] || NOBODY; return `<div class="person">${face(p, 36)}<span class="nm">${esc(p.name)}<small>Lv ${o.lvl} · ${ITEMS[o.w] ? ITEMS[o.w].n : '맨손'} · ${o.cond}</small></span></div>`; }).join('');
+      const canAlly = !me.ally && !v.final && alive > 3;
+      ph = `<h3><span>근처 사람 · 본 적 있음 ${h.seen.length}</span><span class="lab">${unseen > 0 ? `기척 ${unseen > 1 ? '여럿' : '하나'}` : ''}</span></h3>` + h.seen.map(o => { const p = P[o.id] || NOBODY, isA = me.ally && me.ally.id === o.id; return `<div class="person">${face(p, 36)}<span class="nm">${esc(p.name)}${isA ? ' <span class="chip g">동맹</span>' : ''}<small>Lv ${o.lvl} · ${ITEMS[o.w] ? ITEMS[o.w].n : '맨손'} · ${o.cond}</small></span>${canAlly && !isA ? `<button class="sm" ${cmdAttr({ k: 'ally', who: o.id })} ${me.act ? 'disabled' : ''}>동맹 제안</button>` : ''}</div>`; }).join('');
       ph += `<p class="help">${h.signs === 0 ? '인기척이 없다.' : unseen > 0 ? '기척이 있다. 탐색하다 마주치면 먼저 칠 수 있다. 상대도 마찬가지다.' : '탐색하다 마주치면 먼저 칠 수 있다. 상대도 마찬가지다.'}</p>`;
     }
+    if (me.alive && me.allyReq && P[me.allyReq]) ph = `<div class="allyreq"><b>${esc(P[me.allyReq].name)}</b>이(가) 동맹을 제안했다.<div class="row"><button class="sm go" ${cmdAttr({ k: 'allyOk' })}>수락</button><button class="sm" ${cmdAttr({ k: 'allyNo' })}>거절</button></div></div>` + ph;
+    if (me.alive && me.ally) { const a = me.ally, p = P[a.id] || NOBODY; ph += `<div class="allybox"><span class="en">ALLY LINK</span><div class="person">${face(p, 36)}<span class="nm">${esc(p.name)} <span class="chip g">동맹</span><small>${ZONES[a.zone].n} · 체력 ${a.hp}/${a.mh}</small></span><button class="sm" ${cmdAttr({ k: 'allyBreak' })}>끊기</button></div><p class="help">서로 조우해도 공격하지 않는다. 남은 사람이 셋이 되거나 최종 구역이 되면 깨진다.</p></div>`; }
     set('people', ph);
   }
 
@@ -410,8 +443,13 @@
       const my = v.over.rank.indexOf(myId);
       h = `<h3><span>실험 종료</span></h3><p style="margin:0">${my === 0 ? '마지막까지 살아남았다.' : `${my + 1}번째로 남은 사람이었다.`}</p>
         ${v.over.rank.map((id, i) => { const p = P[id] || NOBODY, r = v.roster.find(x => x.id === id) || { k: 0 }; return `<div class="person"><b>${i + 1}</b>${face(p, 28)}<span class="nm">${esc(p.name)}${p.bot ? ' <span class="chip">AI</span>' : ''}${id === myId ? ' <span class="chip g">나</span>' : ''}<small>처치 ${r.k}</small></span></div>`; }).join('')}
-        <div class="row">${gm ? '<button class="go" data-do="reset">새 판 열기</button>' : ''}<button data-do="leave">메뉴로</button></div>`;
-    } else if (!me.alive) h = `<h3><span>탈락</span></h3><p style="margin:0">기록은 여기서 끊겼다. 남은 ${alive}명의 소식은 ‘섬 소식’으로 들려온다.</p>`;
+        <div class="row"><button class="go" data-do="card">결과 카드 보기</button>${gm ? '<button data-do="reset">새 판 열기</button>' : ''}<button data-do="leave">메뉴로</button></div>`;
+    } else if (!me.alive) {
+      const alv = v.roster.filter(r => r.al);
+      h = `<h3><span>탈락 · 관전 중</span><span class="lab">${v.spec ? esc((P[v.spec.id] || NOBODY).name) : '대상 없음'}</span></h3><p style="margin:0">기록은 여기서 끊겼다. 남은 ${alive}명 중 한 명을 골라 지켜볼 수 있다. 채팅은 계속할 수 있다.</p>
+        <div class="row">${alv.map(r => `<button class="sm" ${cmdAttr({ k: 'spec', who: r.id })} aria-pressed="${v.spec && v.spec.id === r.id}">${esc((P[r.id] || NOBODY).name)}</button>`).join('')}</div>
+        ${v.spec ? `<div class="meters">${meter('hp', '체력', v.spec.hp, v.spec.mh)}</div><span class="lab">${ZONES[v.spec.zone].n} · Lv ${v.spec.lvl}</span>` : ''}`;
+    }
     else if (v.here && v.here.enc && !me.act) {
       const o = v.here.enc, p = P[o.id] || NOBODY;
       h = `<h3><span>조우 · ${ZONES[me.zone].n}</span><span class="chip w">상대는 아직 모른다</span></h3>
@@ -433,7 +471,7 @@
     } else if (me.act) {
       const a = me.act;
       if (a.k === 'rest') { const rate = G.World.restRate(v.len, me.inBase); h = `<h3><span>휴식 중 · ${ZONES[me.zone].n}</span><span class="lab num">${me.en >= 100 ? '가득' : '가득까지 ' + clock((100 - me.en) / rate)}</span></h3><div class="meters">${meter('', '스태미너', me.en, 100)}</div><p class="help">${me.inBase ? '거점 안이라 더 빨리 회복되고 체력도 찬다.' : '거점 밖이라 쉬는 동안 들킬 수 있다.'} 가득 차면 저절로 일어난다.</p><div class="row"><button class="sm" ${cmdAttr({ k: 'cancel' })}>일어난다</button></div>`; }
-      else { const nm = { explore: `${ZONES[me.zone].n} 일대를 뒤지는 중`, hunt: '짐승의 흔적을 쫓는 중', move: `${G.J(ZONES[a.to || 0].n, '으로', '로')} 이동하는 중${a.path && a.path.length > 1 ? ` · ${a.path.length}구역 남음` : ''}`, build: '거점을 짓는 중' }[a.k]; h = `<h3><span>${nm}</span><span class="lab num">${clock(a.end - v.t)}</span></h3><div class="prog"><i style="width:${Math.min(100, (v.t - a.start) / (a.end - a.start) * 100)}%"></i></div><div class="row"><button class="sm" ${cmdAttr({ k: 'cancel' })}>그만둔다</button></div>`; }
+      else { const nm = { explore: `${ZONES[me.zone].n} 일대를 뒤지는 중`, hunt: '짐승의 흔적을 쫓는 중', open: '보급 상자를 뜯는 중', move: `${G.J(ZONES[a.to || 0].n, '으로', '로')} 이동하는 중${a.path && a.path.length > 1 ? ` · ${a.path.length}구역 남음` : ''}`, build: '거점을 짓는 중' }[a.k]; h = `<h3><span>${nm}</span><span class="lab num">${clock(a.end - v.t)}</span></h3><div class="prog"><i style="width:${Math.min(100, (v.t - a.start) / (a.end - a.start) * 100)}%"></i></div><div class="row"><button class="sm" ${cmdAttr({ k: 'cancel' })}>그만둔다</button></div>`; }
     }
     S.hidden = !h; if (h && set('status', h)) { const el = $('blog'); if (el) el.scrollTop = el.scrollHeight; } if (!h) cache.status = '';
   }
@@ -451,6 +489,7 @@
       if (v.here.pile) h += one({ k: 'loot' }, '남겨진 짐 뒤지기', `${v.here.pile}개가 놓여 있다`);
     }
     { const rate = G.World.restRate(v.len, me.inBase), full = Math.ceil((100 - me.en) / rate); h += one({ k: 'rest' }, '휴식', me.en >= 100 ? '스태미너 가득' : `스태미너 회복 · 약 ${clock(full)}면 가득${me.inBase ? ' · 체력도 회복' : ''}`, me.en < 30 ? 'main' : ''); }
+    if (v.drop && v.drop.z === me.zone && !me.inBase) h += one({ k: 'openDrop' }, '보급품 열기', '15초 · 소란이 난다 · 먼저 연 사람이 갖는다', 'main');
     if (me.inBase) h += one({ k: 'leave' }, '거점에서 나간다', '다시 들킬 수 있다'); else if (me.base && me.base.zone === me.zone && !v.final) h += one({ k: 'enter' }, '거점으로 들어간다', '안전');
     h += '</div>';
     if (!me.inBase) h += `<p class="help">이동: 지도에서 가고 싶은 구역 이름을 누른다. 멀수록 시간과 스태미너가 더 든다.</p>`;
@@ -459,6 +498,18 @@
 
   function renderPane(v, me) {
     const P = people; let h = '';
+    if (tab === 'gm') {
+      const open = v.zs.map((q, i) => [q, i]).filter(x => x[0] < 2), alv = v.roster.filter(r => r.al);
+      h = `<h3><span>운영 (GM)</span><span class="lab">${mode === 'off' ? '혼자 하기에서는 내가 운영자' : '방장만 볼 수 있다'}</span></h3>
+        ${!v.started ? '<p class="help">판이 시작된 뒤에 쓸 수 있다.</p>' : `<div class="cards acts">
+          <button class="card act ${v.paused ? 'main' : ''}" style="grid-template-columns:1fr" data-gm='{"k":"pause"}'><b>${v.paused ? '다시 시작' : '일시정지'}</b><small>${v.paused ? '시간이 다시 흐른다' : '시간과 모든 행동을 멈춘다'}</small></button>
+          <button class="card act" style="grid-template-columns:1fr" data-gm='{"k":"skip"}' ${v.final ? 'disabled' : ''}><b>다음 폐쇄로</b><small>지금 바로 구역을 닫고 다음 예고</small></button>
+          <button class="card act" style="grid-template-columns:1fr" data-gm='{"k":"drop"}'><b>보급품 투하</b><small>무작위 안전 구역에 떨어뜨린다</small></button></div>
+        <span class="lab">방송</span><div class="row" style="flex-wrap:nowrap"><input type="text" id="gmSay" maxlength="120" placeholder="섬 전체에 알릴 말" style="flex:1 1 0;width:0"><button data-gm='{"k":"say"}'>방송</button></div>
+        <span class="lab">구역 즉시 폐쇄</span><div class="row" style="flex-wrap:nowrap"><select id="gmZone" style="flex:1 1 0;width:0">${open.map(([q, i]) => `<option value="${i}">${ZONES[i].n}${q === 1 ? ' (예고)' : ''}</option>`).join('')}</select><button class="danger" data-gm='{"k":"close"}'>폐쇄</button></div>
+        <span class="lab">강제 탈락</span><div class="row" style="flex-wrap:nowrap"><select id="gmWho" style="flex:1 1 0;width:0">${alv.map(r => `<option value="${r.id}">${esc((P[r.id] || NOBODY).name)}</option>`).join('')}</select><button class="danger" data-gm='{"k":"kill"}'>탈락</button></div>`}`;
+      return set('pane', h);
+    }
     if (tab === 'roster') {
       h = `<h3><span>생존자 명단</span><span class="lab">${v.roster.filter(r => r.al).length}명 생존</span></h3>` + v.roster.map(r => { const p = P[r.id] || NOBODY; return `<div class="person ${r.al ? '' : 'out'}">${face(p, 36)}<span class="nm">${esc(p.name)}${p.bot ? ' <span class="chip">AI</span>' : ''}${r.id === myId ? ' <span class="chip g">나</span>' : ''}<small>${r.al ? (r.on ? '생존' : '생존 · 자리 비움') : '탈락'} · 처치 ${r.k}${p.bio ? ' · ' + esc(p.bio) : ''}</small></span></div>`; }).join('');
     } else if (!v.started || !me.alive || v.over) h = '<p class="help">지금은 할 수 없다.</p>';
