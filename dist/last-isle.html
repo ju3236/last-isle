@@ -1,0 +1,1550 @@
+<title>최후의 섬</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap">
+<style>
+/* 레이아웃: 어두운 관제 화면 3단 — 왼쪽 생존자·소지품, 가운데 탭(지도·탐험/제작/거점/명단)과 기록, 오른쪽 시계·근처 사람·채팅·섬 소식. 한 가지 어두운 톤으로 고정. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0d12; --panel: #121821; --panel-hi: #161e29; --well: #0b1017; --line: #222c3a; --line2: #33415a;
+  --fg: #e6ebf1; --mute: #8592a6; --dim: #5b6779;
+  --accent: #3fd0d9; --gold: #f2b54b; --red: #ff5a52; --green: #5fd38a; --blue: #5aa9ff; --purple: #b98bff;
+  --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --disp: "Rajdhani", "IBM Plex Sans KR", "Malgun Gothic", sans-serif;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg) radial-gradient(1200px 600px at 50% -200px, #14202e, transparent); background-attachment: fixed; color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+* { box-sizing: border-box; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--line2); background: var(--panel-hi); border-radius: 2px; padding: 6px 12px; transition: border-color .12s, background .12s; }
+button:hover:not(:disabled) { border-color: var(--accent); background: #1a2532; }
+button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:disabled { opacity: .35; cursor: default; }
+button.go { background: var(--accent); border-color: var(--accent); color: #04191b; font-weight: 600; }
+button.go:hover:not(:disabled) { background: #6ee0e7; }
+button.danger { border-color: rgba(255,90,82,.6); color: var(--red); }
+button.danger:hover:not(:disabled) { background: rgba(255,90,82,.12); border-color: var(--red); }
+button.sm { padding: 2px 9px; font-size: 12px; }
+input[type=text], input[type=password], select { background: var(--well); border: 1px solid var(--line); border-radius: 2px; padding: 7px 9px; width: 100%; min-width: 0; }
+h1, h2, h3 { font-weight: 600; margin: 0; font-size: 14px; }
+.lab { font-size: 12px; color: var(--mute); }
+.num { font-family: var(--disp); font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: .02em; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.box { background: linear-gradient(180deg, var(--panel-hi), var(--panel) 60px); border: 1px solid var(--line); border-top-color: var(--line2); border-radius: 3px; padding: 14px; display: grid; gap: 10px; min-width: 0; align-content: start; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.box > h3 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.box > h3 > span:first-child { display: flex; align-items: center; gap: 8px; }
+.box > h3 > span:first-child::before { content: ""; width: 3px; height: 13px; background: var(--accent); flex: none; }
+.face { flex: none; border: 1px solid var(--line2); border-radius: 2px; object-fit: cover; display: grid; place-items: center; color: #0b0f14; font-weight: 600; overflow: hidden; }
+.help { color: var(--mute); font-size: 12px; margin: 0; line-height: 1.6; }
+ul.help { padding-left: 16px; } .help li { margin-bottom: 3px; }
+.chip { font-size: 11px; padding: 1px 7px; border-radius: 2px; background: var(--well); border: 1px solid var(--line); color: var(--mute); white-space: nowrap; }
+.chip.w { color: var(--gold); border-color: rgba(242,181,75,.45); background: rgba(242,181,75,.08); }
+.chip.d { color: var(--red); border-color: rgba(255,90,82,.45); background: rgba(255,90,82,.08); }
+.chip.g { color: var(--green); border-color: rgba(95,211,138,.4); background: rgba(95,211,138,.07); }
+.g1 { color: var(--green); } .g2 { color: var(--blue); } .g3 { color: var(--purple); }
+
+/* ---------- 메뉴 ---------- */
+#menu { min-height: 100%; padding-block: 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 18px; }
+.head h1 { font-size: clamp(30px, 6vw, 44px); line-height: 1.1; letter-spacing: -.01em; }
+.head h1::after { content: "LAST ISLE"; display: block; font-family: var(--disp); font-size: 13px; letter-spacing: .4em; color: var(--accent); margin-top: 6px; font-weight: 600; }
+.head p { margin: 8px 0 0; color: var(--mute); max-width: 60ch; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 780px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 12px; min-width: 0; align-content: start; }
+.field { display: grid; gap: 5px; min-width: 0; }
+.sw { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--line2); }
+.sw[aria-pressed=true] { box-shadow: 0 0 0 2px var(--accent); }
+.wp { flex: 1 1 120px; text-align: left; display: grid; gap: 2px; padding: 9px 10px; background: var(--well); }
+.wp[aria-pressed=true] { border-color: var(--accent); background: rgba(63,208,217,.08); }
+.wp small { color: var(--mute); font-size: 12px; }
+.stat { display: grid; grid-template-columns: 44px 26px 1fr 26px; gap: 8px; align-items: center; }
+.stat button { padding: 0; height: 24px; }
+.stat small { grid-column: 3; color: var(--dim); font-size: 11px; margin-top: -5px; }
+.pips { display: flex; gap: 3px; } .pips i { flex: 1; height: 6px; background: var(--well); border-radius: 1px; }
+.pips i.on { background: var(--accent); }
+
+/* ---------- 게임 ---------- */
+#game { min-height: 100%; padding-block: 14px 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.grid { display: grid; grid-template-columns: 280px minmax(0, 1fr) 290px; gap: 12px; align-items: start; max-width: 1500px; margin: 0 auto; }
+@media (max-width: 1100px) { .grid { grid-template-columns: 260px minmax(0, 1fr); } #colR { grid-column: 1 / -1; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); } }
+@media (max-width: 720px) { .grid { grid-template-columns: minmax(0, 1fr); } #colC { order: 1; } #colR { order: 2; } #colL { order: 3; } }
+#title { gap: 6px; } #title h1 { font-size: 17px; } #title h1::after { content: " LAST ISLE"; font-family: var(--disp); font-size: 11px; letter-spacing: .3em; color: var(--accent); }
+.who { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+.who .nm { font-size: 16px; font-weight: 600; line-height: 1.25; }
+.who small { color: var(--mute); display: block; font-size: 12px; }
+.meters { display: grid; gap: 6px; }
+.meter { display: grid; grid-template-columns: 30px 1fr 54px; gap: 8px; align-items: center; font-size: 12px; color: var(--mute); }
+.meter .bar { height: 7px; background: var(--well); border-radius: 1px; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.meter .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #1fa4ad, var(--accent)); transition: width .3s; }
+.meter.hp .bar i { background: linear-gradient(90deg, #c8372f, var(--red)); }
+.meter.hun .bar i { background: linear-gradient(90deg, #c98a25, var(--gold)); }
+.meter.xp .bar i { background: linear-gradient(90deg, #3a7fd0, var(--blue)); }
+.meter b { color: var(--fg); text-align: right; font-family: var(--disp); font-weight: 600; font-size: 14px; }
+.kvs { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; font-size: 13px; } .kvs dt { color: var(--mute); } .kvs dd { margin: 0; min-width: 0; } .kvs small { color: var(--mute); font-size: 12px; }
+.slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.slot { aspect-ratio: 1; padding: 0; background: var(--well); border-color: var(--line); position: relative; font-size: 21px; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.slot.g1 { border-color: rgba(95,211,138,.55); background: linear-gradient(160deg, rgba(95,211,138,.14), var(--well) 70%); }
+.slot.g2 { border-color: rgba(90,169,255,.6); background: linear-gradient(160deg, rgba(90,169,255,.16), var(--well) 70%); }
+.slot.g3 { border-color: rgba(185,139,255,.65); background: linear-gradient(160deg, rgba(185,139,255,.18), var(--well) 70%); }
+.slot[aria-pressed=true] { box-shadow: 0 0 0 2px var(--accent); }
+.slot small { position: absolute; right: 3px; bottom: 1px; font-family: var(--disp); font-weight: 700; font-size: 13px; color: var(--fg); text-shadow: 0 1px 2px #000; }
+.tabs { display: flex; gap: 2px; flex-wrap: wrap; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 3px; }
+.tabs button { flex: 1 1 auto; border: 0; background: none; color: var(--mute); padding: 7px 12px; border-radius: 2px; }
+.tabs button:hover:not(:disabled) { background: var(--panel-hi); color: var(--fg); }
+.tabs button[aria-selected=true] { color: #04191b; background: var(--accent); font-weight: 600; }
+#mapView { position: relative; overflow: hidden; background: radial-gradient(circle at 50% 45%, #1b2430, #0d1218 75%); border: 1px solid var(--line); border-radius: 3px; aspect-ratio: 600 / 524; max-height: 600px; width: 100%; cursor: grab; }
+#mapView.drag { cursor: grabbing; }
+#mapInner { position: absolute; left: 0; top: 0; width: 600px; height: 524px; transform-origin: 0 0; }
+#mapInner canvas, #mapInner svg { position: absolute; inset: 0; width: 600px; height: 524px; display: block; }
+#mapSvg .zl rect { fill: rgba(14,19,26,.86); stroke: rgba(255,255,255,.14); stroke-width: 1; }
+#mapSvg .zl text { font-family: var(--sans); font-size: 12px; font-weight: 500; fill: #e9edf2; pointer-events: none; }
+#mapSvg .zl.z1 rect { stroke: var(--gold); } #mapSvg .zl.z1 text { fill: var(--gold); }
+#mapSvg .zl.z2 rect { fill: rgba(40,10,12,.85); stroke: rgba(255,90,82,.5); } #mapSvg .zl.z2 text { fill: #b47670; text-decoration: line-through; }
+#mapSvg .zl.cur rect { fill: var(--accent); stroke: var(--accent); } #mapSvg .zl.cur[role=button] { cursor: pointer; } #mapSvg .zl.cur[role=button]:hover rect { fill: #6ee0e7; } #mapSvg .zl.cur text { fill: #04191b; font-weight: 600; }
+#mapSvg .zl.adj { cursor: pointer; } #mapSvg .zl.adj rect { stroke: var(--accent); stroke-width: 1.5; }
+#mapSvg .zl.adj:hover rect, #mapSvg .zl.adj:focus-visible rect { fill: rgba(63,208,217,.3); }
+#mapSvg .zl:focus { outline: none; }
+#mapSvg .pm { fill: rgba(230,235,241,.55); }
+#mapSvg .pm.here { stroke: #0b0f14; stroke-width: 2; cursor: pointer; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+#mapSvg .pm.here:hover, #mapSvg .pm.here:focus-visible { stroke: #fff; outline: none; }
+#mapSvg .pm.done { fill-opacity: .5; }
+#mapSvg .tag rect, #mapSvg .tag path { fill: var(--gold); } #mapSvg .tag text { fill: #1d1303; font-family: var(--sans); font-size: 11px; font-weight: 600; }
+#mapSvg .tag.base rect, #mapSvg .tag.base path { fill: var(--green); } #mapSvg .tag.base text { fill: #06200f; }
+#mapSvg .route { stroke: var(--gold); stroke-width: 2.5; stroke-dasharray: 5 5; animation: march .8s linear infinite; }
+@keyframes march { to { stroke-dashoffset: -20; } }
+@media (prefers-reduced-motion: reduce) { #mapSvg .route { animation: none; } .meter .bar i { transition: none; } }
+#zoom { position: absolute; right: 8px; top: 8px; display: grid; gap: 4px; z-index: 2; } #zoom button { width: 30px; height: 30px; padding: 0; background: rgba(14,19,26,.9); }
+#mapHint { position: absolute; left: 10px; bottom: 8px; z-index: 2; pointer-events: none; color: #a9b4c3; text-shadow: 0 1px 2px #000; }
+#legend { display: flex; flex-wrap: wrap; gap: 5px; } #legend span { display: inline-flex; align-items: center; gap: 6px; } #legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.card { display: grid; grid-template-columns: 14px 1fr; gap: 1px 10px; text-align: left; background: var(--well); border-color: var(--line); padding: 9px 11px; align-items: center; }
+.card i { width: 10px; height: 10px; border-radius: 50%; grid-row: span 2; box-shadow: 0 0 0 3px rgba(255,255,255,.04); }
+.card b { font-weight: 500; min-width: 0; } .card small { font-size: 12px; color: var(--mute); }
+.card small u { text-decoration: none; } .card .dots { letter-spacing: 1px; color: var(--gold); }
+.prog { height: 6px; background: var(--well); border-radius: 1px; position: relative; overflow: hidden; } .prog i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #1fa4ad, var(--accent)); }
+.rc { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; text-align: left; width: 100%; padding: 7px 11px; background: var(--well); border-color: var(--line); }
+.rc.ok { border-color: rgba(95,211,138,.5); } .rc small { grid-column: 1 / -1; color: var(--mute); font-size: 12px; } .rc small .no, .no { color: var(--red); } .rc u { text-decoration: none; color: var(--green); font-size: 12px; font-weight: 600; }
+.vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; }
+.vs .side { display: grid; gap: 6px; min-width: 0; } .vs .side:last-child .who { flex-direction: row-reverse; text-align: right; }
+.vs .mid { font-family: var(--disp); font-weight: 700; font-size: 34px; color: var(--gold); text-align: center; line-height: 1; } .vs .mid small { display: block; font-size: 14px; color: var(--mute); margin-top: 4px; }
+.hpb { height: 9px; background: var(--well); border-radius: 1px; position: relative; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); } .hpb i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #c8372f, var(--red)); transition: width .3s; }
+.log { display: grid; gap: 4px; max-height: 280px; overflow-y: auto; align-content: start; font-size: 13px; }
+.log div { display: grid; grid-template-columns: 42px 1fr; gap: 8px; } .log time { font-family: var(--disp); font-weight: 600; font-size: 13px; color: var(--dim); }
+.log .bad span { color: var(--red); } .log .good span { color: var(--green); } .log .sys span { color: var(--mute); } .log .talk span { color: var(--gold); font-style: italic; } .log .warn span { color: var(--gold); }
+#blog { max-height: 170px; background: var(--well); padding: 8px 10px; border-radius: 2px; } #blog div, #chatLog div { grid-template-columns: 1fr; } #chatLog b { color: var(--accent); font-weight: 500; }
+#chatLog, #feedLog { max-height: 220px; }
+.person { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 4px 0; } .person .nm { flex: 1; min-width: 0; line-height: 1.3; } .person small { color: var(--mute); display: block; font-size: 12px; } .person.out { opacity: .4; }
+.person > b { font-family: var(--disp); font-weight: 700; color: var(--mute); width: 22px; font-size: 16px; }
+#clock .big { font-family: var(--disp); font-size: 52px; font-weight: 600; line-height: .95; letter-spacing: .02em; }
+#clock .warn { color: var(--gold); font-weight: 500; }
+#toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--panel-hi); border: 1px solid var(--accent); border-radius: 3px; padding: 9px 18px; z-index: 20; max-width: calc(100vw - 32px); box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+/* 제작 */
+.craft { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 860px) { .craft { grid-template-columns: minmax(0, 1fr); } }
+.cleft, .cright { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.cfilt { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 4px; }
+.cfilt button { white-space: nowrap; }
+.cfilt button { display: flex; justify-content: space-between; gap: 6px; padding: 5px 9px; background: var(--well); border-color: var(--line); font-size: 13px; }
+.cfilt button .num { color: var(--dim); font-size: 13px; }
+.cfilt button[aria-pressed=true] { background: rgba(63,208,217,.14); border-color: var(--accent); color: var(--accent); }
+.igrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 5px; max-height: 360px; overflow-y: auto; padding: 2px; }
+.itile { aspect-ratio: 1; padding: 0; display: grid; place-items: center; position: relative; font-size: 24px; line-height: 1; border: 1px solid var(--line); border-radius: 2px; background: linear-gradient(160deg, rgba(160,170,185,.12), var(--well) 75%); font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.itile.g1 { border-color: rgba(95,211,138,.55); background: linear-gradient(160deg, rgba(95,211,138,.2), var(--well) 75%); }
+.itile.g2 { border-color: rgba(90,169,255,.6); background: linear-gradient(160deg, rgba(90,169,255,.22), var(--well) 75%); }
+.itile.g3 { border-color: rgba(185,139,255,.65); background: linear-gradient(160deg, rgba(185,139,255,.26), var(--well) 75%); }
+.itile[aria-pressed=true] { box-shadow: 0 0 0 2px var(--fg); }
+.itile.sm { width: 30px; font-size: 16px; flex: none; }
+.itile .can { position: absolute; right: 3px; top: 3px; width: 8px; height: 8px; background: var(--green); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+.itile small { position: absolute; right: 3px; bottom: 1px; font-family: var(--disp); font-weight: 700; font-size: 12px; color: var(--fg); text-shadow: 0 1px 2px #000; }
+.itile em { position: absolute; left: 0; right: 0; bottom: 0; font-style: normal; font-family: var(--sans); font-size: 10px; background: var(--gold); color: #1d1303; }
+.csec { display: grid; gap: 6px; background: var(--well); border: 1px solid var(--line); border-radius: 2px; padding: 8px 10px; min-width: 0; }
+.uppers { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.treewrap { overflow-x: auto; padding: 4px 0 2px; }
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
+.tree ul { padding-top: 14px; position: relative; }
+.tree li { position: relative; padding: 14px 4px 0; display: flex; flex-direction: column; align-items: center; }
+.tree > li { padding-top: 0; }
+.tree li::before, .tree li::after { content: ""; position: absolute; top: 0; height: 14px; border-top: 1px solid var(--line2); width: 50%; }
+.tree li::before { right: 50%; } .tree li::after { left: 50%; border-left: 1px solid var(--line2); }
+.tree li:first-child::before, .tree li:last-child::after { border-top: 0; }
+.tree li:only-child::before { display: none; } .tree li:only-child::after { border-top: 0; }
+.tree > li::before, .tree > li::after { display: none; }
+.tree ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 14px; border-left: 1px solid var(--line2); }
+.tnode { display: grid; justify-items: center; gap: 2px; padding: 5px 6px; background: var(--panel); border-color: var(--line); min-width: 64px; }
+.tnode .tn { font-size: 11px; color: var(--fg); white-space: nowrap; }
+.tnode .num { font-size: 12px; padding: 0 5px; border: 1px solid var(--line); } .tnode .num.ok { color: var(--green); } .tnode .num.no { color: var(--red); }
+.cdet { display: grid; gap: 8px; background: var(--well); border: 1px solid var(--line2); border-radius: 2px; padding: 10px 12px; }
+.cdet .nm { font-size: 17px; font-weight: 600; }
+.cdet .stats { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--green); }
+.cdet button[aria-pressed=true] { border-color: var(--gold); color: var(--gold); }
+#mapSvg .gmat rect { fill: rgba(14,19,26,.9); stroke: var(--gold); stroke-width: 1; }
+#mapSvg .gmat text { font-size: 12px; }
+.cards.acts { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+.card.main { border-color: var(--accent); background: linear-gradient(160deg, rgba(63,208,217,.16), var(--well) 70%); }
+.card.main b { color: var(--accent); font-size: 16px; }
+/* ===== SF 연구시설 HUD 스킨 ===== */
+:root {
+  --bg: #05080c; --panel: rgba(9,17,24,.9); --panel-hi: rgba(13,26,35,.92); --well: rgba(3,8,12,.75);
+  --line: #18303d; --line2: #2b5868; --fg: #d6e5ec; --mute: #6f8a97; --dim: #47606c;
+  --accent: #3fd6e8; --gold: #e8b54a;
+  --cut: 10px;
+}
+body { background-color: var(--bg);
+  background-image: radial-gradient(1400px 700px at 50% 0, rgba(22,60,78,.45), transparent 70%), radial-gradient(900px 500px at 50% 110%, rgba(10,40,52,.35), transparent 70%),
+    linear-gradient(rgba(63,214,232,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(63,214,232,.035) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px; background-attachment: fixed; }
+.en, .box::before { font-family: var(--disp); font-weight: 600; font-size: 11px; letter-spacing: .28em; color: var(--accent); text-transform: uppercase; }
+.box { position: relative; border: 0; border-radius: 0; box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 0 var(--line2);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  background:
+    linear-gradient(135deg, transparent 0 6.4px, var(--line2) 6.4px 7.8px, transparent 7.8px) top left / 14px 14px no-repeat,
+    linear-gradient(-45deg, transparent 0 6.4px, var(--line2) 6.4px 7.8px, transparent 7.8px) bottom right / 14px 14px no-repeat,
+    linear-gradient(180deg, var(--panel-hi), var(--panel) 80px); }
+.box::after { content: ""; position: absolute; top: 0; left: 22px; width: 46px; height: 2px; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.box::before { display: flex; align-items: center; gap: 8px; margin-bottom: -4px; content: "SYSTEM"; }
+#title::before { content: "LAST ISLE // EXPERIMENT NODE"; } #dossier::before { content: "SUBJECT FILE"; } #bag::before { content: "INVENTORY"; }
+#status::before { content: "EVENT // LIVE"; color: var(--gold); } #places::before { content: "FIELD ACTION"; } #pane::before { content: "TERMINAL"; }
+#logBox::before { content: "OBSERVATION LOG"; } #clock::before { content: "CHRONO // ZONE CONTROL"; } #people::before { content: "PROXIMITY SCAN"; }
+#chatBox::before { content: "COMMS"; } #feedBox::before { content: "BROADCAST"; }
+.box > h3 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; padding-bottom: 8px; border-bottom: 1px solid var(--line); position: relative; }
+.box > h3::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 28px; height: 1px; background: var(--accent); }
+.box > h3 > span:first-child::before { width: 0; height: 0; border: 4px solid transparent; border-left: 6px solid var(--accent); background: none; }
+button { border-radius: 0; }
+button.go { background: linear-gradient(180deg, #1c4c58, #0e2a33); border: 1px solid #4fd3e3; color: #eaffff; font-weight: 600; letter-spacing: .08em; box-shadow: inset 0 0 14px rgba(63,214,232,.25), 0 0 10px rgba(63,214,232,.15);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+button.go:hover:not(:disabled) { background: linear-gradient(180deg, #23606e, #123843); }
+.chip { border-radius: 0; font-family: var(--disp); font-weight: 600; letter-spacing: .06em; }
+.tabs { background: transparent; border: 0; border-bottom: 1px solid var(--line2); padding: 0; gap: 0; border-radius: 0; }
+.tabs button { position: relative; flex: 1 1 auto; padding: 10px 12px 9px; color: var(--mute); font-size: 15px; letter-spacing: .04em; border-radius: 0; }
+.tabs button[aria-selected=true] { background: linear-gradient(180deg, transparent, rgba(63,214,232,.12)); color: var(--accent); font-weight: 600; text-shadow: 0 0 10px rgba(63,214,232,.6); }
+.tabs button[aria-selected=true]::before, .tabs button[aria-selected=true]::after { content: ""; position: absolute; top: 9px; bottom: 9px; width: 6px; border: 1px solid var(--accent); }
+.tabs button[aria-selected=true]::before { left: 10px; border-right: 0; } .tabs button[aria-selected=true]::after { right: 10px; border-left: 0; }
+.tabs button[aria-selected=true] { box-shadow: inset 0 -2px 0 var(--accent); }
+/* 게이지: 마디로 끊긴 사선 막대 */
+.meter { grid-template-columns: 52px 1fr 44px; }
+.meter .bar { height: 9px; background: repeating-linear-gradient(90deg, rgba(120,170,190,.13) 0 8px, transparent 8px 10px); box-shadow: none; transform: skewX(-28deg); overflow: hidden; border-radius: 0; }
+.meter .bar i { --c: var(--accent); background: repeating-linear-gradient(90deg, var(--c) 0 8px, transparent 8px 10px) !important; filter: drop-shadow(0 0 3px var(--c)); }
+.meter.hp .bar i { --c: #ff5a52; } .meter.hun .bar i { --c: var(--gold); } .meter.xp .bar i { --c: #5aa9ff; }
+.hpb { height: 10px; transform: skewX(-28deg); background: repeating-linear-gradient(90deg, rgba(120,170,190,.13) 0 8px, transparent 8px 10px); box-shadow: none; border-radius: 0; }
+.hpb i { background: repeating-linear-gradient(90deg, #ff5a52 0 8px, transparent 8px 10px) !important; filter: drop-shadow(0 0 3px #ff5a52); }
+.prog { height: 8px; transform: skewX(-28deg); background: repeating-linear-gradient(90deg, rgba(120,170,190,.13) 0 8px, transparent 8px 10px); }
+.prog i { background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 10px); filter: drop-shadow(0 0 3px var(--accent)); }
+/* 카드 · 슬롯: 한쪽 모서리를 깎는다 */
+.card, .rc, .cfilt button, .tnode, .wp { border-radius: 0; clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%); background: linear-gradient(160deg, rgba(20,40,52,.7), rgba(4,10,14,.85)); border-color: var(--line); }
+.card:hover:not(:disabled), .rc:hover:not(:disabled) { background: linear-gradient(160deg, rgba(30,70,86,.75), rgba(6,16,22,.9)); }
+.card.main { border-color: #4fd3e3; background: linear-gradient(160deg, rgba(63,214,232,.25), rgba(4,12,16,.9)); box-shadow: inset 0 0 18px rgba(63,214,232,.15); }
+.card.main b { text-shadow: 0 0 10px rgba(63,214,232,.6); letter-spacing: .1em; }
+.slot, .itile { border-radius: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), inset 0 -2px 0 rgba(140,150,160,.35); }
+.slot.g1, .itile.g1 { box-shadow: inset 0 -2px 0 var(--green); } .slot.g2, .itile.g2 { box-shadow: inset 0 -2px 0 var(--blue); } .slot.g3, .itile.g3 { box-shadow: inset 0 -2px 0 var(--purple); }
+.csec, .cdet { border-radius: 0; background: rgba(3,8,12,.6); }
+.face { border-radius: 0; box-shadow: 0 0 0 1px var(--line2), 0 0 12px rgba(63,214,232,.15); }
+input[type=text], input[type=password], select { border-radius: 0; background: rgba(2,6,9,.8); border-color: var(--line2); }
+/* 시계 */
+#clock .big { color: #e9fbff; text-shadow: 0 0 14px rgba(63,214,232,.55); font-size: 56px; }
+/* 지도: 세로를 줄이고 모서리 브래킷 */
+#mapView { aspect-ratio: auto; height: clamp(230px, 38vh, 400px); max-height: none; border: 1px solid var(--line); border-radius: 0; background: radial-gradient(circle at 50% 45%, #0f2230, #04080c 75%); }
+#mapView::after { content: ""; position: absolute; inset: 6px; pointer-events: none; z-index: 1;
+  background:
+    linear-gradient(var(--accent), var(--accent)) top left / 16px 2px no-repeat, linear-gradient(var(--accent), var(--accent)) top left / 2px 16px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / 16px 2px no-repeat, linear-gradient(var(--accent), var(--accent)) top right / 2px 16px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / 16px 2px no-repeat, linear-gradient(var(--accent), var(--accent)) bottom left / 2px 16px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 16px 2px no-repeat, linear-gradient(var(--accent), var(--accent)) bottom right / 2px 16px no-repeat,
+    linear-gradient(rgba(63,214,232,.05) 1px, transparent 1px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(63,214,232,.05) 1px, transparent 1px) 0 0 / 24px 24px; }
+#mapView::before { content: "SECTOR MAP // 21 ZONES"; position: absolute; left: 16px; top: 12px; z-index: 2; font-family: var(--disp); font-weight: 600; font-size: 11px; letter-spacing: .28em; color: var(--accent); pointer-events: none; }
+#zoom { right: 14px; top: 14px; } #zoom button { border-color: var(--line2); background: rgba(4,10,14,.85); }
+#mapHint { left: 16px; bottom: 12px; }
+/* 레이더 */
+.radar { display: grid; grid-template-columns: 132px 1fr; gap: 10px; align-items: center; }
+.radar svg { width: 132px; height: 120px; overflow: visible; }
+.radar svg text { font-family: var(--sans); font-size: 10px; fill: var(--mute); }
+.radar dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
+.radar dt { color: var(--mute); } .radar dd { margin: 0; text-align: right; font-family: var(--disp); font-weight: 700; font-size: 16px; color: var(--fg); }
+/* 레이아웃 간격 */
+.grid { gap: 14px; }
+#colC { gap: 10px; }
+.log { max-height: 200px; }
+#log { max-height: 170px; }
+#mapSvg { z-index: 1; } #mapPrevSvg { z-index: 0; }
+#mapPrevSvg .route.pre { stroke: var(--accent); stroke-width: 2.5; stroke-dasharray: 5 5; filter: drop-shadow(0 0 4px var(--accent)); }
+#mapSvg .route, #mapPrevSvg .route { stroke-linejoin: round; }
+#mapPrevSvg .eta rect { fill: rgba(4,12,16,.92); stroke: var(--accent); } #mapPrevSvg .eta text { fill: var(--accent); font-family: var(--sans); font-size: 11px; font-weight: 600; }
+.card.danger-card { border-color: rgba(255,90,82,.7); background: linear-gradient(160deg, rgba(255,90,82,.22), rgba(4,12,16,.9)); box-shadow: inset 0 0 18px rgba(255,90,82,.15); }
+.card.danger-card b { color: #ff7a72; text-shadow: 0 0 10px rgba(255,90,82,.6); }
+#mapSvg .noise path { fill: #ff8a3d; stroke: #1a0c03; stroke-width: 1.5; stroke-linejoin: round; filter: drop-shadow(0 0 5px rgba(255,138,61,.8)); }
+#mapSvg .noise.mob path { fill: #e8b54a; filter: drop-shadow(0 0 4px rgba(232,181,74,.6)); }
+#mapSvg .noise text { fill: #1a0c03; font-family: var(--disp); font-weight: 700; font-size: 12px; pointer-events: none; }
+#mapSvg .noise.fresh { animation: noisePulse 1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes noisePulse { 50% { transform: scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { #mapSvg .noise.fresh { animation: none; } }
+.stats5 { display: grid; gap: 4px; }
+.stats5 .sp { color: var(--gold); font-size: 13px; padding: 4px 8px; border: 1px solid rgba(232,181,74,.5); background: rgba(232,181,74,.08); }
+.stats5 .sp b { font-size: 16px; }
+.srow { display: grid; grid-template-columns: 44px 22px 1fr auto; gap: 2px 8px; align-items: center; }
+.srow .sn { color: var(--mute); font-size: 13px; } .srow b { font-size: 16px; text-align: right; }
+.srow small { color: var(--dim); font-size: 11px; line-height: 1.35; }
+.srow .plus { padding: 1px 8px; font-size: 12px; }
+#stats { gap: 6px !important; }
+</style>
+
+<div id="menu">
+  <div class="wrap">
+    <div class="head">
+      <h1>최후의 섬</h1>
+      <p>열세 구역이 차례로 닫히는 섬. 뒤지고, 만들고, 숨고, 마주치면 싸운다. 마지막까지 남는 건 한 명.</p>
+    </div>
+    <div class="cols">
+      <div class="box">
+        <h3><span>생존자 등록</span><span class="lab">내 캐릭터</span></h3>
+        <div class="row" style="align-items:flex-start">
+          <div id="facePrev"></div>
+          <div class="field grow"><label class="lab" for="cname">이름</label><input type="text" id="cname" maxlength="10" placeholder="이름">
+            <div class="row"><input type="file" id="cimg" accept="image/*" hidden><button class="sm" id="imgBtn">두상 올리기</button><button class="sm" id="imgClr">지우기</button></div></div>
+        </div>
+        <div class="field"><label class="lab" for="cbio">한 줄 소개</label><input type="text" id="cbio" maxlength="60" placeholder="예: 보건부 2학년. 겁이 많다."></div>
+        <div class="field"><span class="lab">색</span><div class="row" id="colors"></div></div>
+        <div class="field"><span class="lab">처음 쥔 무기</span><div class="row" id="weapons" style="align-items:stretch"></div></div>
+        <div class="field"><span class="lab">능력치 · 남은 포인트 <b id="left"></b></span><div id="stats" style="display:grid;gap:8px"></div></div>
+        <div class="field"><span class="lab">대사</span>
+          <input type="text" id="l_meet" maxlength="40" placeholder="습격할 때 (예: 미안, 나도 살아야 해서.)">
+          <input type="text" id="l_kill" maxlength="40" placeholder="상대를 쓰러뜨렸을 때">
+          <input type="text" id="l_die" maxlength="40" placeholder="쓰러질 때"></div>
+      </div>
+      <div class="col">
+        <div class="box">
+          <h3><span>판 설정</span></h3>
+          <div class="field"><label class="lab" for="tempo">판 길이 (구역 폐쇄 간격)</label><select id="tempo"></select></div>
+          <div class="row"><label class="lab" for="bots">AI 생존자</label><input type="range" id="bots" min="0" max="20" value="11" class="grow"><b class="num" id="botsN">11</b></div>
+        </div>
+        <div class="box">
+          <h3><span>혼자 하기</span><span class="lab">오프라인</span></h3>
+          <p class="help">AI가 만든 생존자들과 겨룹니다. 진행은 이 기기에 저장되고, 창을 닫으면 시간이 멈춥니다.</p>
+          <div class="row"><button class="go" id="offBtn">새 판 시작</button><button id="contBtn" hidden>이어하기</button></div>
+        </div>
+        <div class="box" id="onBox">
+          <h3><span>같이 하기</span><span class="lab">온라인</span></h3>
+          <div class="field"><label class="lab" for="room">방 이름</label><input type="text" id="room" maxlength="16" placeholder="없는 이름이면 새 방을 엽니다"></div>
+          <div class="field"><label class="lab" for="pw">캐릭터 비밀번호</label><input type="password" id="pw" maxlength="40" placeholder="나중에 다시 들어올 때 씁니다 (4자 이상)"></div>
+          <div class="row"><button class="go" id="onBtn">입장</button><span class="help no" id="onErr"></span></div>
+          <p class="help">방은 서버에 계속 남습니다. 나갔다가 같은 방·이름·비밀번호로 들어오면 이어집니다.</p>
+        </div>
+        <p class="help" id="onNote" hidden>온라인 모드는 게임 서버를 실행한 주소에서 열어야 합니다.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="game" hidden>
+  <div class="grid">
+    <div class="col" id="colL">
+      <div class="box" id="title"></div>
+      <div class="box" id="dossier"></div>
+      <div class="box" id="bag"></div>
+    </div>
+    <div class="col" id="colC">
+      <div class="tabs" id="tabs"></div>
+      <div class="box" id="status" hidden></div>
+      <div id="mapTab" class="col">
+        <div id="mapView">
+          <div id="mapInner"><canvas id="terrain" width="1200" height="1048"></canvas><canvas id="zov" width="1200" height="1048"></canvas><svg id="mapPrevSvg" viewBox="0 0 600 524" aria-hidden="true" style="pointer-events:none"><g id="mapPrev"></g></svg><svg id="mapSvg" viewBox="0 0 600 524" role="img" aria-label="섬 지도"></svg></div>
+          <div id="zoom"><button data-zoom="1" aria-label="확대">+</button><button data-zoom="-1" aria-label="축소">−</button><button data-zoom="0" aria-label="내 위치로">⌂</button></div>
+          <span class="lab" id="mapHint"></span>
+        </div>
+        <div id="legend"></div>
+        <div class="box" id="places"></div>
+      </div>
+      <div class="box" id="pane" hidden></div>
+      <div class="box" id="logBox"><h3><span>기록</span></h3><div class="log" id="log"></div></div>
+    </div>
+    <div class="col" id="colR">
+      <div class="box" id="clock"></div>
+      <div class="box" id="people"></div>
+      <div class="box" id="chatBox"><h3><span>채팅</span></h3><div class="log" id="chatLog"></div>
+        <form class="row" id="chatForm" style="flex-wrap:nowrap"><input type="text" id="chatIn" maxlength="120" placeholder="모두에게 말하기" style="flex:1 1 0;width:0"><button style="flex:none">전송</button></form></div>
+      <div class="box" id="feedBox"><h3><span>섬 소식</span></h3><div class="log" id="feedLog"></div></div>
+    </div>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script>window.OFFLINE_ONLY = true;</script>
+<script>
+// 게임 데이터: 아이템, 제작법, 구역 그래프, 탐험지, 야생동물, 문구
+(function (X) {
+  'use strict';
+  // g: 등급 0 일반 · 1 고급 · 2 희귀 · 3 영웅
+  const M = (n, e) => ({ n, e, t: 'mat', g: 0 });
+  const ITEMS = {
+    // 기본 재료 (섬에서 줍는다)
+    scrap: M('고철', '⚙️'), nail: M('못', '📌'), chain: M('쇠사슬', '⛓️'), leather: M('가죽', '🟫'), cloth: M('옷감', '🧵'),
+    thread: M('실', '🪡'), rubber: M('고무', '🛞'), plastic: M('플라스틱', '🧴'), bottle: M('유리병', '🍾'), battery: M('배터리', '🔋'),
+    wire: M('전선', '🔌'), oil: M('오일', '🛢️'), lighter: M('라이터', '🔥'), gunpowder: M('화약', '🧨'), paper: M('종이', '📄'),
+    pencil: M('연필', '✏️'), bandage: M('붕대', '🩹'), herb: M('약초', '🌿'), water: M('샘물', '💧'), feather: M('깃털', '🪶'),
+    branch: M('나뭇가지', '🪵'), stone: M('돌멩이', '🪨'), gem: M('원석', '💎'), ice: M('얼음', '🧊'), chem: M('화학약품', '⚗️'),
+    lens: M('렌즈', '🔍'), fish: M('생선', '🐟'), meat: M('생고기', '🥩'),
+    // 중간 재료 (만든다)
+    plate: { n: '철판', e: '🔩', t: 'mat', g: 1 }, strap: { n: '가죽끈', e: '🎗️', t: 'mat', g: 1 }, weave: { n: '질긴 천', e: '🧶', t: 'mat', g: 1 },
+    motor: { n: '소형 모터', e: '🔧', t: 'mat', g: 1 }, scope: { n: '조준경', e: '🔭', t: 'mat', g: 1 }, bomb: { n: '폭약 꾸러미', e: '💣', t: 'mat', g: 1 },
+    crystal: { n: '다듬은 원석', e: '💠', t: 'mat', g: 1 }, salve: { n: '약초 연고', e: '🫙', t: 'mat', g: 1 },
+    // 음식
+    berry: { n: '산열매', e: '🍒', t: 'food', g: 0, hun: 12, hp: 3 }, bread: { n: '빵', e: '🍞', t: 'food', g: 0, hun: 25 },
+    choco: { n: '초콜릿', e: '🍫', t: 'food', g: 0, hun: 10, en: 20 }, ramen: { n: '컵라면', e: '🍜', t: 'food', g: 0, hun: 35 },
+    juice: { n: '열매 주스', e: '🧃', t: 'food', g: 1, hun: 20, en: 25 }, jam_bread: { n: '잼빵', e: '🥐', t: 'food', g: 1, hun: 40, hp: 10 },
+    hot_choco: { n: '핫초코', e: '☕', t: 'food', g: 1, hun: 10, en: 50 }, grilled_fish: { n: '생선구이', e: '🍢', t: 'food', g: 1, hun: 35, hp: 15 },
+    steak: { n: '스테이크', e: '🍖', t: 'food', g: 1, hun: 55, hp: 25 },
+    // 회복·물약
+    kit: { n: '구급상자', e: '🧰', t: 'potion', g: 1, hp: 80 }, heal_potion: { n: '회복 물약', e: '🧪', t: 'potion', g: 1, hp: 60 },
+    aid_kit: { n: '응급 키트', e: '🩺', t: 'potion', g: 2, hp: 110 },
+    power_potion: { n: '투지 물약', e: '💪', t: 'potion', g: 1, buff: 'atk', d: '한동안 공격력 +30%' },
+    swift_potion: { n: '신속 물약', e: '💨', t: 'potion', g: 1, buff: 'agi', d: '한동안 민첩 +3' },
+    // 무기 (계열 · 단계)
+    sword1: { n: '녹슨 검', e: '🗡️', t: 'weapon', wc: 'sword', tier: 1, atk: 4 }, sword2: { n: '날 세운 검', e: '🗡️', t: 'weapon', wc: 'sword', tier: 2, atk: 10 },
+    sword3: { n: '강철 장검', e: '🗡️', t: 'weapon', wc: 'sword', tier: 3, atk: 17 }, sword4: { n: '뇌명검', e: '🗡️', t: 'weapon', wc: 'sword', tier: 4, atk: 26 },
+    spear1: { n: '대나무 창', e: '🔱', t: 'weapon', wc: 'spear', tier: 1, atk: 4 }, spear2: { n: '철촉 창', e: '🔱', t: 'weapon', wc: 'spear', tier: 2, atk: 10 },
+    spear3: { n: '갈고리 창', e: '🔱', t: 'weapon', wc: 'spear', tier: 3, atk: 17 }, spear4: { n: '용아창', e: '🔱', t: 'weapon', wc: 'spear', tier: 4, atk: 26 },
+    bow1: { n: '사냥활', e: '🏹', t: 'weapon', wc: 'bow', tier: 1, atk: 4 }, bow2: { n: '합성궁', e: '🏹', t: 'weapon', wc: 'bow', tier: 2, atk: 10 },
+    bow3: { n: '저격궁', e: '🏹', t: 'weapon', wc: 'bow', tier: 3, atk: 17 }, bow4: { n: '뇌전궁', e: '🏹', t: 'weapon', wc: 'bow', tier: 4, atk: 26 },
+    // 방어구: 옷 · 머리 · 팔 · 다리
+    armor1: { n: '셔츠', e: '👕', t: 'armor', tier: 1, def: 6 }, armor2: { n: '누빔 조끼', e: '🦺', t: 'armor', tier: 2, def: 16 },
+    armor3: { n: '가죽 갑옷', e: '🧥', t: 'armor', tier: 3, def: 28 }, armor4: { n: '판금 흉갑', e: '🛡️', t: 'armor', tier: 4, def: 42 },
+    head1: { n: '모자', e: '🧢', t: 'head', tier: 1, def: 3 }, head2: { n: '자전거 헬멧', e: '⛑️', t: 'head', tier: 2, def: 8, luk: 1 },
+    head3: { n: '전술 헬멧', e: '🪖', t: 'head', tier: 3, def: 14, luk: 2 },
+    arm1: { n: '팔찌', e: '📿', t: 'arm', tier: 1, atk: 2, def: 2 }, arm2: { n: '가죽 토시', e: '🧤', t: 'arm', tier: 2, atk: 5, def: 5 },
+    arm3: { n: '강철 건틀릿', e: '🦾', t: 'arm', tier: 3, atk: 9, def: 9 },
+    boots1: { n: '슬리퍼', e: '🩴', t: 'boots', tier: 1, agi: 1, def: 2 }, boots2: { n: '운동화', e: '👟', t: 'boots', tier: 2, agi: 2, def: 4 },
+    boots3: { n: '질풍 장화', e: '👢', t: 'boots', tier: 3, agi: 3, def: 6 },
+  };
+  for (const k in ITEMS) {
+    const it = ITEMS[k]; it.id = k; if (it.tier) it.g = it.tier - 1;
+    if (!it.d && (it.t === 'food' || it.t === 'potion')) it.d = [it.hun && `허기 +${it.hun}`, it.hp && `체력 +${it.hp}`, it.en && `스태미너 +${it.en}`].filter(Boolean).join(' · ');
+  }
+  const R = (out, cat, inp) => ({ out, cat, in: inp });
+  const RECIPES = [
+    R('sword2', '무기', { sword1: 1, plate: 1 }), R('sword3', '무기', { sword2: 1, strap: 1, gem: 1 }), R('sword4', '무기', { sword3: 1, motor: 1, crystal: 1 }),
+    R('spear2', '무기', { spear1: 1, plate: 1 }), R('spear3', '무기', { spear2: 1, chain: 1, strap: 1 }), R('spear4', '무기', { spear3: 1, crystal: 1, weave: 1 }),
+    R('bow2', '무기', { bow1: 1, feather: 1, strap: 1 }), R('bow3', '무기', { bow2: 1, scope: 1 }), R('bow4', '무기', { bow3: 1, motor: 1, crystal: 1 }),
+    R('armor2', '방어구', { armor1: 1, weave: 1 }), R('armor3', '방어구', { armor2: 1, strap: 1, leather: 1 }), R('armor4', '방어구', { armor3: 1, plate: 1, crystal: 1 }),
+    R('head2', '방어구', { head1: 1, plastic: 1, rubber: 1 }), R('head3', '방어구', { head2: 1, plate: 1, lens: 1 }),
+    R('arm2', '방어구', { arm1: 1, strap: 1 }), R('arm3', '방어구', { arm2: 1, plate: 1, chain: 1 }),
+    R('boots2', '방어구', { boots1: 1, rubber: 1, cloth: 1 }), R('boots3', '방어구', { boots2: 1, weave: 1, feather: 1 }),
+    R('plate', '중간 재료', { scrap: 2, nail: 1 }), R('strap', '중간 재료', { leather: 1, thread: 1 }), R('weave', '중간 재료', { cloth: 1, thread: 1 }),
+    R('motor', '중간 재료', { battery: 1, wire: 1 }), R('scope', '중간 재료', { lens: 1, plastic: 1 }), R('bomb', '중간 재료', { gunpowder: 1, paper: 1 }),
+    R('crystal', '중간 재료', { gem: 1, chem: 1 }), R('salve', '중간 재료', { herb: 1, bottle: 1 }),
+    R('heal_potion', '물약', { herb: 1, water: 1 }), R('aid_kit', '물약', { bandage: 1, salve: 1 }),
+    R('power_potion', '물약', { chem: 1, berry: 1 }), R('swift_potion', '물약', { chem: 1, choco: 1 }),
+    R('steak', '음식', { meat: 1, lighter: 1 }), R('grilled_fish', '음식', { fish: 1, branch: 1 }), R('juice', '음식', { berry: 1, water: 1 }),
+    R('jam_bread', '음식', { bread: 1, berry: 1 }), R('hot_choco', '음식', { choco: 1, water: 1 }),
+  ];
+  const BASE_COST = { branch: 2, stone: 1, cloth: 1 };
+  const WEAPONS = {
+    sword: { n: '검', d: '선제공격 때 35% 확률로 한 번 더 벤다 · 맞을 때 20% 흘려냄' },
+    spear: { n: '창', d: '한 방이 세다 · 25% 확률로 찌르기(1.6배)' },
+    bow: { n: '활', d: '선제공격 첫 화살이 1.6배' },
+  };
+  // 섬: 중앙 1 + 안쪽 고리 7 + 바깥 고리 13
+  const ZD = [
+    ['관제소', '섬 한가운데의 낮은 콘크리트 건물. 꺼진 모니터가 벽 한 면을 채우고 있다.', { gem: 2, chem: 2, battery: 2, lens: 1, crate: 3 }, 0],
+    ['전통시장', '천막 지붕이 반쯤 내려앉은 시장 골목. 좌판마다 쓸 만한 잡동사니가 남아 있다.', { cloth: 3, bread: 2, thread: 2, bottle: 1, crate: 1 }, 0],
+    ['아파트', '복도식 아파트 다섯 동. 현관문 몇 개는 아직 열려 있다.', { cloth: 2, plastic: 2, paper: 2, choco: 1, armor1: 1 }, 0],
+    ['골목', '좁은 골목이 거미줄처럼 얽혀 있다. 모퉁이마다 누가 숨어 있어도 이상하지 않다.', { lighter: 3, wire: 2, nail: 2, ramen: 1 }, 0],
+    ['초등학교', '운동장에 체육 기구가 쓰러져 있다. 과학실 문이 열려 있다.', { paper: 3, pencil: 3, chem: 2, rubber: 1 }, 0],
+    ['보건소', '약품 냄새가 아직 가시지 않았다. 진료실 서랍이 하나씩 열려 있다.', { bandage: 4, herb: 2, bottle: 2, kit: 1 }, 0],
+    ['파출소', '책상 위에 서류가 흩어져 있다. 보관함 자물쇠는 누가 이미 부숴 놓았다.', { chain: 3, gunpowder: 2, lens: 2, head1: 1 }, 0],
+    ['백화점', '셔터가 반쯤 올라간 백화점. 매대 사이로 바람이 지난다.', { cloth: 3, thread: 2, choco: 2, boots1: 1, arm1: 1 }, 0],
+    ['등대', '불 꺼진 등대 아래로 파도가 부서진다. 갯바위에 낚싯대 하나가 꽂혀 있다.', { fish: 4, lens: 2, stone: 2, oil: 1 }, 0],
+    ['부두', '녹슨 크레인 아래 컨테이너가 층층이 쌓여 있다. 바닷바람에 쇳내가 섞인다.', { scrap: 3, chain: 2, rubber: 2, oil: 2 }, 0],
+    ['수산시장', '좌판은 비었지만 비린내는 남았다. 수조 몇 개에는 아직 물이 차 있다.', { fish: 4, ice: 3, bottle: 1, meat: 1 }, 0],
+    ['해수욕장', '파라솔 몇 개가 모래에 처박혀 있다. 매점 문은 판자로 막혀 있다.', { stone: 3, plastic: 2, rubber: 2, ramen: 1 }, 1],
+    ['캠핑장', '버려진 텐트와 꺼진 모닥불 자리. 아이스박스 하나가 그대로 있다.', { branch: 3, lighter: 2, oil: 1, meat: 1, ramen: 1 }, 0],
+    ['갈대밭', '어깨까지 오는 갈대가 바람에 눕는다. 발밑이 질척거린다.', { herb: 3, feather: 3, water: 2, berry: 1 }, 3],
+    ['대나무숲', '대나무가 서로 부딪히는 소리가 끊이지 않는다. 누가 다가와도 알기 어렵다.', { branch: 4, herb: 2, berry: 2, spear1: 1 }, 0],
+    ['산사', '이끼 낀 돌계단 위의 작은 절. 약수터 물이 아직 흐른다.', { water: 3, herb: 2, gem: 2, bread: 1 }, 1],
+    ['저수지', '수면이 거울처럼 잔잔하다. 둑 위 관리동 창문이 깨져 있다.', { water: 4, fish: 2, herb: 1, ice: 1 }, 5],
+    ['폐공장', '라인이 멈춘 공장. 바닥에 기름 자국과 공구가 흩어져 있다.', { scrap: 4, nail: 3, oil: 2, plate: 0 }, 0],
+    ['발전소', '변압기가 웅웅거린다. 전기가 아직 조금은 살아 있는 모양이다.', { battery: 3, wire: 3, scrap: 2, chem: 1 }, 1],
+    ['고물상', '고철 더미가 산처럼 쌓여 있다. 뒤지면 뭐든 나올 것 같다.', { scrap: 3, battery: 2, chain: 2, nail: 2 }, 0],
+    ['터미널', '시간표가 멈춘 버스 터미널. 대합실 의자 밑에 누군가의 짐이 있다.', { paper: 2, choco: 2, bread: 2, rubber: 1, boots1: 1 }, 0],
+  ];
+  const isle = (x, y) => { const dx = x - 300, dy = y - 262, a = Math.atan2(dy, dx), rx = 272 + 12 * Math.sin(3 * a + 1) + 8 * Math.sin(5 * a), ry = 240 + 10 * Math.sin(4 * a + 2) + 6 * Math.sin(7 * a); return dx * dx / (rx * rx) + dy * dy / (ry * ry); };
+  const ZONES = ZD.map((z, i) => {
+    let x = 300, y = 262;
+    if (i >= 1 && i <= 7) { const a = (i - 1) / 7 * 6.2832 - 1.2; x += Math.cos(a) * 118; y += Math.sin(a) * 104; }
+    if (i >= 8) { const a = (i - 8) / 13 * 6.2832 - 1.5; x += Math.cos(a) * 222; y += Math.sin(a) * 196; }
+    const res = {}; for (const k in z[2]) if (z[2][k] > 0) res[k] = z[2][k];
+    return { n: z[0], d: z[1], res, pond: z[3], x: Math.round(x), y: Math.round(y), adj: [] };
+  });
+  // 이웃 구역: 섬 위 점을 훑어 두 구역의 경계가 맞닿는지 본다
+  {
+    const seen = new Set();
+    for (let y = 0; y < 524; y += 3) for (let x = 0; x < 600; x += 3) {
+      if (isle(x, y) > 0.97) continue;
+      let a = -1, b = -1, da = 1e9, db = 1e9;
+      ZONES.forEach((Z, i) => { const d = Math.hypot(Z.x - x, Z.y - y); if (d < da) { db = da; b = a; da = d; a = i; } else if (d < db) { db = d; b = i; } });
+      if (db - da < 4) { const k = Math.min(a, b) + ',' + Math.max(a, b); if (!seen.has(k)) { seen.add(k); ZONES[a].adj.push(b); ZONES[b].adj.push(a); } }
+    }
+  }
+  // 탐험지: 분류에 따라 나오는 물건이 다르다
+  const CATS = {
+    home: { n: '주거', c: '#b39ddb', res: { cloth: 3, thread: 2, bread: 2, choco: 1, plastic: 1, armor1: 1, crate: 1 } },
+    shop: { n: '상업', c: '#e6c46a', res: { crate: 2, cloth: 2, choco: 2, ramen: 2, plastic: 1, boots1: 1, arm1: 1 } },
+    med: { n: '의료', c: '#ef9a9a', res: { bandage: 4, herb: 2, bottle: 2, chem: 1, kit: 1 } },
+    edu: { n: '교육', c: '#82b4e8', res: { paper: 3, pencil: 2, chem: 2, lens: 1, battery: 1, crate: 1 } },
+    ind: { n: '공업', c: '#e3a166', res: { scrap: 4, nail: 3, oil: 2, wire: 1, chain: 1 } },
+    power: { n: '전기', c: '#f2e27a', res: { battery: 3, wire: 3, scrap: 1, chem: 1 } },
+    civic: { n: '치안', c: '#9fb3c8', res: { chain: 2, gunpowder: 2, lens: 1, head1: 1, crate: 2 } },
+    nature: { n: '자연', c: '#8fcf8a', res: { branch: 3, herb: 2, berry: 3, feather: 1, stone: 1 } },
+    water: { n: '수원', c: '#7fd6e0', res: { water: 5, herb: 1, fish: 1, ice: 1 } },
+    port: { n: '항만', c: '#5ba8c4', res: { fish: 4, rubber: 2, oil: 1, chain: 1, ice: 1 } },
+    ruin: { n: '유적', c: '#c4beb2', res: { stone: 3, gem: 2, scrap: 1, crate: 1 } },
+  };
+  const PD = [
+    [['통제실', 'civic', 3], ['서버실', 'power', 3], ['연구 자료실', 'edu', 3], ['옥상 헬기장', 'ruin', 2]],
+    [['떡집', 'shop', 1], ['포목점', 'home', 1], ['약재상', 'med', 2], ['시장 창고', 'shop', 2]],
+    [['101동 복도', 'home', 1], ['관리사무소', 'edu', 2], ['지하 주차장', 'ind', 2], ['놀이터', 'nature', 1]],
+    [['편의점', 'shop', 1], ['철물점', 'ind', 2], ['반지하 방', 'home', 1], ['막다른 길', 'ruin', 2]],
+    [['교실', 'edu', 1], ['과학실', 'edu', 2], ['급식실', 'shop', 1], ['체육 창고', 'home', 2]],
+    [['진료실', 'med', 1], ['약품 창고', 'med', 3], ['대기실', 'home', 1]],
+    [['민원실', 'edu', 1], ['증거물 보관소', 'civic', 3], ['유치장', 'civic', 2]],
+    [['의류 매장', 'home', 1], ['식품관', 'shop', 1], ['옥상 정원', 'nature', 2], ['물류 하역장', 'ind', 2]],
+    [['등대', 'ruin', 3], ['갯바위 낚시터', 'port', 1], ['등대지기 숙소', 'home', 2]],
+    [['컨테이너 야적장', 'ind', 2], ['선박 정비소', 'port', 2], ['세관 창고', 'civic', 3]],
+    [['어물전 좌판', 'port', 1], ['얼음 창고', 'water', 2], ['경매장', 'shop', 3]],
+    [['백사장', 'ruin', 1], ['매점', 'shop', 1], ['구조대 망루', 'civic', 2]],
+    [['텐트촌', 'home', 1], ['관리동', 'edu', 1], ['숲길', 'nature', 2]],
+    [['갈대 수로', 'water', 1], ['새 관찰대', 'nature', 2], ['양수장', 'power', 2]],
+    [['대숲 오솔길', 'nature', 1], ['죽순 군락', 'nature', 1], ['숯가마', 'ind', 2]],
+    [['대웅전', 'ruin', 2], ['약수터', 'water', 1], ['요사채', 'home', 1]],
+    [['둑방길', 'nature', 1], ['수문 관리동', 'power', 2], ['낚시 좌대', 'water', 1]],
+    [['조립 라인', 'ind', 1], ['보일러실', 'ind', 2], ['자재 창고', 'ind', 3]],
+    [['변전소', 'power', 2], ['제어실', 'power', 3], ['냉각탑', 'ind', 2]],
+    [['고철 더미', 'ind', 1], ['폐차장', 'ind', 2], ['사무실 컨테이너', 'home', 1]],
+    [['대합실', 'home', 1], ['매표소', 'edu', 1], ['수하물 창고', 'shop', 2]],
+  ];
+  const PLACES = [];
+  let seed = 20261115; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  PD.forEach((list, z) => {
+    const Z = ZONES[z]; Z.places = [];
+    list.forEach((d, i) => {
+      let x = Z.x, y = Z.y;
+      for (let t = 0; t < 80; t++) {
+        const a = (i / list.length) * 6.2832 + rnd() * 1.2, r = 16 + rnd() * 24;
+        x = Math.round(Z.x + Math.cos(a) * r); y = Math.round(Z.y + Math.sin(a) * r * 0.9);
+        let near = z, bd = 1e9; ZONES.forEach((o, k) => { const dd = (o.x - x) ** 2 + (o.y - y) ** 2; if (dd < bd) { bd = dd; near = k; } });
+        if (near === z && isle(x, y) < 0.9 && Math.abs(y - Z.y) > 12 && !PLACES.some(p => Math.abs(p.x - x) < 13 && Math.abs(p.y - y) < 13)) break;
+      }
+      Z.places.push(PLACES.length); PLACES.push({ id: PLACES.length, n: d[0], cat: d[1], diff: d[2], z, x, y });
+    });
+  });
+  const CRATE = ['leather', 'leather', 'battery', 'wire', 'chem', 'gunpowder', 'gem', 'lens', 'chain', 'thread', 'kit', 'ramen', 'choco', 'bread', 'armor1', 'head1', 'arm1', 'boots1', 'heal_potion'];
+  const MOBS = {
+    chicken: { n: '들닭', e: '🐔', hp: 25, atk: 4, agi: 3, drops: ['meat', 'feather'], xp: 8 },
+    boar: { n: '멧돼지', e: '🐗', hp: 70, atk: 11, agi: 1, drops: ['meat', 'leather'], xp: 15 },
+    dog: { n: '들개', e: '🐕', hp: 45, atk: 10, agi: 4, drops: ['leather'], xp: 12 },
+    wolf: { n: '늑대', e: '🐺', hp: 60, atk: 14, agi: 4, drops: ['leather', 'meat'], xp: 18 },
+    bear: { n: '곰', e: '🐻', hp: 120, atk: 19, agi: 1, drops: ['leather', 'leather', 'meat'], xp: 32 },
+  };
+  const BOT_NAMES = ['하람', '도윤', '서린', '이든', '가온', '누리', '다온', '라온', '마루', '바다', '새벽', '아라', '은솔', '재하', '초롱', '한결', '보람', '슬기', '여울', '태오', '미르', '나래', '소담', '해솔'];
+  const BOT_LINES = [
+    { meet: '미안, 나도 살아야 해서.', kill: '…원망은 저승에서 들을게.', die: '여기까지인가.' },
+    { meet: '찾았다.', kill: '다음.', die: '하, 방심했네.' },
+    { meet: '저, 저리 가! 오지 마!', kill: '내가… 내가 한 거야?', die: '집에 가고 싶어…' },
+    { meet: '운이 없었네, 너.', kill: '약한 쪽이 지는 거야.', die: '재밌었다.' },
+    { meet: '조용히 끝내자.', kill: '편히 쉬어.', die: '…먼저 갈게.' },
+  ];
+  const COLORS = ['#c9584a', '#d9b44a', '#6fae7b', '#5fa3c4', '#9a82c9', '#c97fa4', '#cf8a4f', '#5fb3a6', '#aab85a', '#b9b6a8'];
+  Object.assign(X, { isle, ITEMS, RECIPES, BASE_COST, WEAPONS, ZONES, CATS, PLACES, CRATE, MOBS, BOT_NAMES, BOT_LINES, COLORS });
+})(typeof module !== 'undefined' ? module.exports : (self.GameData = {}));
+</script>
+<script>
+// 세계 규칙: 서버(온라인)와 브라우저(오프라인)가 같은 코드를 쓴다. 상태(this.s)는 통째로 JSON 저장 가능.
+(function (X, D) {
+  'use strict';
+  const { ITEMS, RECIPES, BASE_COST, ZONES, CATS, PLACES, CRATE, MOBS, BOT_NAMES, BOT_LINES, COLORS } = D;
+  const START_PTS = 12, STAT_MAX = 15, INV = 15, SLOTS = ['weapon', 'armor', 'head', 'arm', 'boots'], STASH = 12, MAXLV = 10, TURN = 25, IDLE = 180;
+  const TEMPO = { fast: { n: '빠른 판 (약 20분)', len: 150 }, normal: { n: '보통 (약 3시간)', len: 1200 }, long: { n: '긴 판 (약 2일)', len: 21600 } };
+  const DUR = { explore: 10, hunt: 10, move: 20, build: 45 }, COST = { explore: 12, hunt: 15, move: 8, build: 25, attack: 15 };
+  // 능력치: [이름, 효과 설명]
+  const STAT_FX = {
+    str: ['근력', '공격력 +2'],
+    agi: ['민첩', '회피 · 먼저 치기 · 도주 확률 상승, 이동 시간 -3%'],
+    con: ['체질', '최대 체력 +12, 방어 +1, 허기 감소 -4%'],
+    luk: ['운', '급소 +2%, 조우 · 추가 수확 확률 상승'],
+    end: ['지구력', '행동 스태미너 소모 -4%, 휴식 회복 +10%'],
+  };
+  const ri = n => Math.random() * n | 0, pick = a => a[ri(a.length)];
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = ri(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function J(w, a, b) { const c = w.charCodeAt(w.length - 1); if (c < 0xAC00 || c > 0xD7A3) return w + b; return w + ((c - 0xAC00) % 28 ? a : b); }
+  function pickW(t) { let tot = 0; for (const k in t) tot += t[k]; let v = Math.random() * tot; for (const k in t) { v -= t[k]; if (v <= 0) return k; } }
+  const JL = (ids, a, b) => { const n = ids.map(g => ITEMS[g].n); return J(n.join(', '), a, b); };
+  const clean = (s, n) => String(s == null ? '' : s).replace(/[<>&\u0000-\u001f]/g, '').trim().slice(0, n);
+
+  function cleanChar(c) {
+    c = c || {};
+    const st = { str: 0, agi: 0, con: 0, luk: 0, end: 0 }; let left = START_PTS;
+    for (const k in st) { const v = Math.max(0, Math.min(6, left, (c.st && c.st[k]) | 0)); st[k] = v; left -= v; }
+    const L = c.lines || {};
+    return {
+      name: clean(c.name, 10) || '이름 없는 생존자', color: /^#[0-9a-fA-F]{6}$/.test(c.color) ? c.color : COLORS[0],
+      img: (typeof c.img === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(c.img) && c.img.length < 60000) ? c.img : '',
+      weapon: ['sword', 'spear', 'bow'].includes(c.weapon) ? c.weapon : 'sword', st,
+      bio: clean(c.bio, 60), lines: { meet: clean(L.meet, 40), kill: clean(L.kill, 40), die: clean(L.die, 40) },
+    };
+  }
+
+  class World {
+    constructor(s) { this.s = s; for (const c of Object.values(s.chars || {})) { c.st.end = c.st.end || 0; c.sp = c.sp || 0; } s.noise = s.noise || []; s.pv = s.pv || {}; s.pvT = s.pvT || 0; for (const c of Object.values(s.chars)) { c.visits = c.visits || {}; c.battle = 0; for (const k of SLOTS) if (c.eq[k] === undefined) c.eq[k] = null; while (c.inv.length < INV) c.inv.push(null); if (c.act && c.act.k === 'explore' && c.act.p == null) c.act = null; } }
+    static create(opts) {
+      opts = opts || {}; const tempo = TEMPO[opts.tempo] ? opts.tempo : 'fast';
+      return new World({ v: 1, t: 0, started: false, over: null, tempo, len: TEMPO[tempo].len, nextClose: 0, phase: 0, final: false, duelT: 0, zs: ZONES.map(() => 0), order: shuffle(ZONES.map((_, i) => i)), chars: {}, nid: 1, battles: {}, piles: {}, pv: {}, pvT: 0, feed: [], chat: [], rank: [] });
+    }
+    cost(c, base) { return Math.max(1, Math.round(base * Math.max(0.5, 1 - 0.04 * (c.st.end || 0)))); }
+    static moveCost(hops) { return COST.move + (hops - 1) * 6; }
+    // 스태미너: 저절로는 아주 조금, 쉬면 빠르게 (판 길이에 비례)
+    static restRate(len, inBase) { return 100 / (len * 0.2) * (inBase ? 1.6 : 1); }
+    static idleRate(len) { return 100 / (len * 4); }
+    legDur(c) { return Math.round(DUR.move * (1 - 0.1 * this.stats(c).agi / 3)); }
+    // 폐쇄되지 않은 구역만 밟는 가장 짧은 길 (출발 구역 제외, 도착 구역 포함)
+    route(from, to) {
+      const prev = { [from]: -1 }, q = [from];
+      while (q.length) { const u = q.shift(); if (u === to) break; for (const v of ZONES[u].adj) if (prev[v] === undefined && this.s.zs[v] < 2) { prev[v] = u; q.push(v); } }
+      if (prev[to] === undefined) return null;
+      const p = []; for (let u = to; u !== -1; u = prev[u]) p.unshift(u); return p.slice(1);
+    }
+    static exDur(pl) { return 9 + pl.diff * 6; }
+    static exCost(pl) { return 5 + pl.diff * 2; }
+    get list() { return Object.values(this.s.chars); }
+    alive() { return this.list.filter(c => c.alive); }
+
+    addChar(def, bot) {
+      const s = this.s, d = cleanChar(def), id = s.nid++;
+      const c = s.chars[id] = {
+        id, name: d.name, color: d.color, img: d.img, st: d.st, bio: d.bio, lines: d.lines, bot: !!bot, online: false, wc: d.weapon,
+        hp: 0, hunger: 100, en: 100, zone: 0, alive: true, lvl: 1, xp: 0, kills: 0, inv: new Array(INV).fill(null),
+        eq: { weapon: d.weapon + '1', armor: null, head: null, arm: null, boots: null }, act: null, base: null, inBase: false, battle: 0, seen: {}, bf: { atk: 0, agi: 0 }, log: [], seenAt: s.t, think: 0, starve: 0, visits: {},
+      };
+      c.hp = this.stats(c).maxHp;
+      if (s.started) { c.zone = this.openZone(); this.log(c, `${ZONES[c.zone].n}에서 눈을 떴다.`, 'sys'); }
+      return c;
+    }
+    addBots(n) {
+      const used = new Set(this.list.map(c => c.name));
+      for (let i = 0; i < n; i++) {
+        let name; do { name = pick(BOT_NAMES); } while (used.has(name) && used.size < BOT_NAMES.length); used.add(name);
+        const st = { str: 0, agi: 0, con: 0, luk: 0, end: 0 }, ks = Object.keys(st);
+        for (let k = 0; k < START_PTS;) { const q = pick(ks); if (st[q] < 6) { st[q]++; k++; } }
+        this.addChar({ name, color: pick(COLORS), weapon: pick(['sword', 'spear', 'bow']), st, lines: pick(BOT_LINES) }, true);
+      }
+    }
+    openZone() { const o = ZONES.map((_, i) => i).filter(i => this.s.zs[i] === 0); return o.length ? pick(o) : this.s.zs.findIndex(v => v < 2); }
+    start() {
+      const s = this.s; if (s.started) return;
+      s.started = true; s.nextClose = s.t + s.len;
+      const zs = shuffle(ZONES.map((_, i) => i)); let k = 0;
+      for (const c of this.list) { c.zone = zs[k++ % zs.length]; c.seenAt = s.t; this.log(c, `${ZONES[c.zone].n}에서 눈을 떴다. 손에는 ${ITEMS[c.eq.weapon].n} 하나뿐이다.`, 'sys'); }
+      this.feed(`실험이 시작되었다. 생존자 ${this.list.length}명.`, 'sys');
+    }
+
+    stats(c) {
+      const t = this.s.t, sum = f => SLOTS.reduce((a, k) => a + ((ITEMS[c.eq[k]] || {})[f] || 0), 0);
+      return {
+        maxHp: 100 + c.st.con * 12 + (c.lvl - 1) * 8,
+        atk: Math.round((10 + c.st.str * 2 + (c.lvl - 1) + sum('atk')) * (c.bf.atk > t ? 1.3 : 1)),
+        def: c.st.con + sum('def'), agi: c.st.agi + sum('agi') + (c.bf.agi > t ? 3 : 0), luk: c.st.luk + sum('luk'), end: c.st.end || 0,
+      };
+    }
+    log(c, m, k) { c.log.push({ t: Math.round(this.s.t), m, k: k || '' }); if (c.log.length > 90) c.log.shift(); }
+    feed(m, k) { const f = this.s.feed; f.push({ t: Math.round(this.s.t), m, k: k || '' }); if (f.length > 60) f.shift(); }
+
+    // ---------- 소지품 ----------
+    count(c, id) { let n = 0; for (const s of c.inv) if (s && s.id === id) n += s.n; if (c.eq[ITEMS[id].t] === id) n++; return n; }
+    give(c, id, n) {
+      const max = ITEMS[id].tier ? 1 : 5;
+      for (const s of c.inv) if (n > 0 && s && s.id === id && s.n < max) { const k = Math.min(n, max - s.n); s.n += k; n -= k; }
+      for (let i = 0; i < INV && n > 0; i++) if (!c.inv[i]) { const k = Math.min(n, max); c.inv[i] = { id, n: k }; n -= k; }
+      return n;
+    }
+    pile(zone, id, n) { if (n <= 0 || this.s.zs[zone] === 2) return; const p = this.s.piles[zone] || (this.s.piles[zone] = []); const e = p.find(x => x.id === id); if (e) e.n += n; else p.push({ id, n }); }
+    giveOrPile(c, id, n) { this.pile(c.zone, id, this.give(c, id, n)); }
+    take(c, id, n) {
+      for (let i = 0; i < INV && n > 0; i++) { const s = c.inv[i]; if (s && s.id === id) { const k = Math.min(n, s.n); s.n -= k; n -= k; if (!s.n) c.inv[i] = null; } }
+      const t = ITEMS[id].t; if (n > 0 && c.eq[t] === id) c.eq[t] = null;
+    }
+    has(c, need) { for (const k in need) if (this.count(c, k) < need[k]) return false; return true; }
+    xp(c, n) {
+      c.xp += n;
+      while (c.lvl < MAXLV && c.xp >= c.lvl * 30) { c.xp -= c.lvl * 30; c.lvl++; c.hp += 18; c.sp = (c.sp || 0) + 1; this.log(c, `경험이 쌓였다. 레벨 ${c.lvl}. 능력치 포인트 +1`, 'good'); }
+    }
+    useItem(c, slot) {
+      const s = c.inv[slot | 0]; if (!s) return '빈 칸입니다';
+      const it = ITEMS[s.id], m = this.stats(c);
+      if (it.tier) { const old = c.eq[it.t]; c.eq[it.t] = s.id; c.inv[slot] = old ? { id: old, n: 1 } : null; this.log(c, `${J(it.n, '을', '를')} 장비했다.`); return; }
+      if (it.t === 'mat') return '그대로는 쓸 수 없는 재료입니다';
+      if (it.hun) c.hunger = Math.min(100, c.hunger + it.hun);
+      if (it.hp) c.hp = Math.min(m.maxHp, c.hp + it.hp);
+      if (it.en) c.en = Math.min(100, c.en + it.en);
+      if (it.buff) c.bf[it.buff] = this.s.t + this.s.len * 0.6;
+      if (!--s.n) c.inv[slot] = null;
+      this.log(c, `${J(it.n, '을', '를')} ${it.t === 'potion' ? '마셨다' : '먹었다'}. (${it.d})`, 'good');
+    }
+    craft(c, out) {
+      const rec = RECIPES.find(r => r.out === out); if (!rec) return '없는 제작법입니다';
+      if (!this.has(c, rec.in)) return '재료가 부족합니다';
+      for (const k in rec.in) this.take(c, k, rec.in[k]);
+      const it = ITEMS[out];
+      if (it.tier && (!c.eq[it.t] || ITEMS[c.eq[it.t]].tier < it.tier)) { const old = c.eq[it.t]; c.eq[it.t] = out; if (old) this.giveOrPile(c, old, 1); }
+      else this.giveOrPile(c, out, 1);
+      this.xp(c, it.tier ? 8 * it.tier : 6);
+      this.log(c, `${J(it.n, '을', '를')} 만들었다.`, 'good');
+    }
+
+    // ---------- 명령 ----------
+    cmd(id, m) {
+      const s = this.s, c = s.chars[id]; if (!c || !m) return '캐릭터가 없습니다';
+      if (m.k === 'chat') { const t = clean(m.m, 120); if (t) { s.chat.push({ t: Math.round(s.t), id: c.id, n: c.name, m: t }); if (s.chat.length > 80) s.chat.shift(); } return; }
+      if (!s.started) return '아직 시작 전입니다'; if (s.over) return '판이 끝났습니다'; if (!c.alive) return '이미 탈락했습니다';
+      c.seenAt = s.t;
+      if (m.k === 'ack') { if (c.fight) c.fight.ack = true; return; }
+      if (c.enc && ['explore', 'hunt', 'move', 'rest', 'build', 'enter'].includes(m.k)) { c.enc = null; }
+      const z = c.zone, timed = k => {
+        if (c.act) return '이미 다른 행동을 하는 중입니다'; if (c.inBase && k !== 'rest') return '거점에서 나와야 합니다';
+        if (COST[k] && c.en < this.cost(c, COST[k])) return '스태미너가 부족합니다. 쉬어야 합니다';
+        c.en -= COST[k] ? this.cost(c, COST[k]) : 0; return null;
+      };
+      let e;
+      switch (m.k) {
+        case 'stat': {
+          const k = String(m.s); if (!(k in STAT_FX)) return '없는 능력치입니다'; if (!(c.sp > 0)) return '남은 포인트가 없습니다'; if (c.st[k] >= STAT_MAX) return `한 능력치는 ${STAT_MAX}까지 올릴 수 있습니다`;
+          c.st[k]++; c.sp--; if (k === 'con') c.hp += 12; this.log(c, `${STAT_FX[k][0]} ${c.st[k] - 1} → ${c.st[k]}`, 'good'); return;
+        }
+        case 'cancel': if (c.act) { c.act = null; this.log(c, '하던 일을 멈췄다.'); } return;
+        case 'use': return this.useItem(c, m.slot);
+        case 'craft': return this.craft(c, String(m.r));
+        case 'drop': { const sl = c.inv[m.slot | 0]; if (!sl) return; c.inv[m.slot | 0] = null; this.pile(z, sl.id, sl.n); this.log(c, `${J(ITEMS[sl.id].n, '을', '를')} 내려놓았다.`); return; }
+        case 'explore': {
+          if (c.act) return '이미 다른 행동을 하는 중입니다'; if (c.inBase) return '거점에서 나와야 합니다';
+          if (c.en < this.cost(c, COST.explore)) return '스태미너가 부족합니다. 쉬어야 합니다';
+          // 구역 안 어디를 뒤질지는 그때그때 정해진다 (덜 털린 곳일수록 잘 걸린다)
+          const ps = ZONES[z].places, wts = ps.map(p => 1 / (1 + (s.pv[p] || 0))); let r = Math.random() * wts.reduce((a, b) => a + b, 0), pid = ps[0];
+          for (let k = 0; k < ps.length; k++) { r -= wts[k]; if (r <= 0) { pid = ps[k]; break; } }
+          c.en -= this.cost(c, COST.explore); c.act = { k: 'explore', p: pid, start: s.t, end: s.t + DUR.explore }; return;
+        }
+        case 'hunt':
+          if ((e = timed(m.k))) return e; c.act = { k: m.k, start: s.t, end: s.t + DUR[m.k] }; return;
+        case 'rest': if ((e = timed('rest'))) return e; c.act = { k: 'rest', start: s.t, end: 0 }; this.log(c, c.inBase ? '거점에 몸을 뉘었다.' : '주변을 살피며 숨을 고른다.'); return;
+        case 'move': {
+          const to = m.to | 0; if (!ZONES[to] || to === z) return '갈 수 없는 곳입니다'; if (s.zs[to] === 2) return '폐쇄된 구역입니다';
+          const path = this.route(z, to); if (!path) return '열린 길이 없습니다';
+          const cost = this.cost(c, World.moveCost(path.length)); if (c.act) return '이미 다른 행동을 하는 중입니다'; if (c.inBase) return '거점에서 나와야 합니다';
+          if (c.en < cost) return '스태미너가 부족합니다. 쉬어야 합니다';
+          c.en -= cost; const leg = this.legDur(c);
+          c.act = { k: 'move', to, path, start: s.t, leg: s.t + leg, end: s.t + leg * path.length }; return;
+        }
+        case 'build':
+          if (s.final) return '최종 구역에서는 거점을 지을 수 없습니다'; if (s.zs[z] !== 0) return '폐쇄 예고 구역에는 지을 수 없습니다';
+          if (!this.has(c, BASE_COST)) return '재료가 부족합니다';
+          if ((e = timed('build'))) return e;
+          for (const k in BASE_COST) this.take(c, k, BASE_COST[k]);
+          c.act = { k: 'build', start: s.t, end: s.t + DUR.build }; return;
+        case 'enter': if (!c.base || c.base.zone !== z) return '이 구역에 거점이 없습니다'; if (c.act) return '하던 일을 먼저 끝내야 합니다'; c.inBase = true; c.seen = {}; this.log(c, '거점에 들어가 문을 잠갔다. 여기서는 아무도 찾지 못한다.', 'good'); return;
+        case 'leave': if (c.inBase) { c.inBase = false; if (c.act) c.act = null; this.log(c, '거점 밖으로 나왔다.'); } return;
+        case 'stash': { if (!c.inBase) return '거점 안에서만 가능합니다'; const sl = c.inv[m.slot | 0]; if (!sl) return; if (c.base.stash.length >= STASH) return '창고가 가득 찼습니다'; c.base.stash.push(sl); c.inv[m.slot | 0] = null; return; }
+        case 'unstash': { if (!c.inBase) return '거점 안에서만 가능합니다'; const sl = c.base.stash[m.i | 0]; if (!sl) return; sl.n = this.give(c, sl.id, sl.n); if (!sl.n) c.base.stash.splice(m.i | 0, 1); else return '가방이 가득 찼습니다'; return; }
+        case 'loot': {
+          if (c.inBase) return '거점에서 나와야 합니다'; const p = s.piles[z]; if (!p || !p.length) return '남은 짐이 없습니다';
+          const got = []; s.piles[z] = p.filter(x => { const before = x.n; x.n = this.give(c, x.id, x.n); if (before > x.n) got.push(`${ITEMS[x.id].n}×${before - x.n}`); return x.n > 0; });
+          this.log(c, got.length ? `남겨진 짐에서 ${got.join(', ')} 챙겼다.` : '가방이 가득 차서 아무것도 챙기지 못했다.', got.length ? 'good' : ''); return;
+        }
+        case 'attack': {
+          const o = s.chars[m.who | 0];
+          if (c.inBase) return '거점에서 나와야 합니다';
+          if (!c.enc || !o || c.enc.id !== o.id) return '마주친 상대만 공격할 수 있습니다';
+          if (!o.alive || o.zone !== z || o.inBase) { c.enc = null; return '상대가 이미 사라졌습니다'; }
+          if (c.act) return '하던 일을 먼저 끝내야 합니다'; if (c.en < this.cost(c, COST.attack)) return '스태미너가 부족합니다. 쉬어야 합니다';
+          c.en -= this.cost(c, COST.attack); c.enc = null; this.strike(c, o); return;
+        }
+        case 'ignore': { if (c.enc) { const o = s.chars[c.enc.id]; c.enc = null; this.log(c, `${J(o.name, '을', '를')} 모른 척 지나쳤다.`); } return;
+        }
+      }
+      return '알 수 없는 명령입니다';
+    }
+
+    // ---------- 행동 완료 ----------
+    finish(c) {
+      const s = this.s, a = c.act, z = c.zone, Z = ZONES[z], st = this.stats(c); c.act = null;
+      if (a.k === 'move') {
+        const next = a.path && a.path.length ? a.path[0] : a.to;
+        if (s.zs[next] === 2) { this.log(c, `${J(ZONES[next].n, '으로', '로')} 가는 길이 막혀 ${Z.n}에 멈춰 섰다.`, 'bad'); return; }
+        c.zone = next; c.seen = {}; c.inBase = false;
+        if (next !== a.to) {
+          const rest = a.path.slice(1), leg = this.legDur(c);
+          c.act = { ...a, path: rest, leg: s.t + leg, end: s.t + leg * rest.length };
+          this.log(c, `${J(ZONES[next].n, '을', '를')} 지나간다.`, 'sys'); return;
+        }
+        const n = this.list.filter(o => o.alive && o !== c && o.zone === a.to && !o.inBase).length;
+        this.log(c, `${ZONES[a.to].n}에 도착했다. ${n ? (n > 1 ? '여럿의 기척이 느껴진다.' : '누군가의 기척이 느껴진다.') : '인기척은 없다.'}`);
+        return;
+      }
+      if (a.k === 'build') { c.base = { zone: z, stash: (c.base && c.base.zone === z) ? c.base.stash : [] }; this.xp(c, 10); this.log(c, `${Z.n}에 거점을 마련했다. 안에 있는 동안은 누구에게도 들키지 않는다.`, 'good'); return; }
+      if (a.k === 'hunt') {
+        if (Math.random() < 0.25) { this.log(c, '한참을 뒤쫓았지만 짐승의 흔적을 놓쳤다.'); return; }
+        this.skirmish(c, { mobTy: pickW({ chicken: 3, boar: 3, dog: 3, wolf: 2, bear: 1 }) }, { first: 'a' }); return;
+      }
+      if (a.k === 'explore') {
+        const pl = PLACES[a.p], used = s.pv[pl.id] || 0;
+        this.xp(c, 4 + pl.diff * 2); c.visits[pl.id] = (c.visits[pl.id] || 0) + 1; s.pv[pl.id] = used + 1;
+        { // 조우: 같은 구역을 뒤지다 마주친다. 마주친 쪽이 선제공격할 수 있다.
+          const near = shuffle(this.list.filter(o => o.alive && o !== c && o.zone === z && !o.inBase));
+          const hit = near.find(o => Math.random() < (s.final ? 0.75 : 0.35) + st.luk * 0.04 + (c.grudge === o.id ? 0.25 : 0));
+          if (hit) { c.seen[hit.id] = 1; c.enc = { id: hit.id, t: s.t }; this.log(c, `${J(hit.name, '과', '와')} 마주쳤다! 상대는 아직 이쪽을 눈치채지 못했다.`, 'warn'); return; }
+        }
+        const r = Math.random(), draw = () => { const k = pickW(Math.random() < 0.3 ? Z.res : CATS[pl.cat].res); return k === 'crate' ? pick(CRATE) : k; };
+        const pEmpty = Math.min(0.65, 0.04 + used * 0.09), pMob = 0.03 + pl.diff * 0.045, pCrate = 0.02 + pl.diff * 0.06;
+        if (r < pEmpty) { this.log(c, `${pl.n} — ` + pick(['허탕이었다. 쓸 만한 것은 누가 이미 가져간 뒤다.', '바람 소리에 놀라 한참을 숨어 있었다. 얻은 것은 없다.', '샅샅이 뒤졌지만 아무것도 찾지 못했다.'])); return; }
+        if (r < pEmpty + pMob) { const mob = pickW({ chicken: 2, boar: 3, dog: 3, wolf: 3, bear: 1 }); this.log(c, `${pl.n} — 안쪽에서 소리가 난다. ${J(MOBS[mob].n, '이', '가')} 튀어나왔다!`, 'bad'); this.skirmish(c, { mobTy: mob }, { first: 'b' }); return; }
+        if (r < pEmpty + pMob + pCrate) {
+          const got = [pick(CRATE), pick(CRATE)]; if (Math.random() < 0.3 + st.luk * 0.05) got.push(pick(CRATE));
+          for (const g of got) this.giveOrPile(c, g, 1);
+          this.log(c, `${pl.n} — 보급 상자를 찾았다! ${JL(got, '을', '를')} 얻었다.`, 'good'); return;
+        }
+        const got = [draw()]; if (Math.random() < 0.3 + st.luk * 0.06) got.push(draw()); if (pl.diff > 1 && Math.random() < 0.25 * (pl.diff - 1)) got.push(draw());
+        for (const g of got) this.giveOrPile(c, g, 1);
+        this.log(c, `${J(pl.n, '을', '를')} 뒤져 ${JL(got, '을', '를')} 얻었다.`);
+      }
+    }
+
+    // ---------- 전투 ----------
+    // ---------- 전투 (자동 교전) ----------
+    ent(x) {
+      if (x.mobTy) { const M = MOBS[x.mobTy]; return { name: M.n, atk: M.atk, def: 0, agi: M.agi, luk: 0, wc: '', mob: x, get hp() { return x.hp; }, set hp(v) { x.hp = v; }, mh: x.mh }; }
+      const st = this.stats(x); return { name: x.name, atk: st.atk, def: st.def, agi: st.agi, luk: st.luk, wc: ITEMS[x.eq.weapon] ? ITEMS[x.eq.weapon].wc : '', c: x, get hp() { return x.hp; }, set hp(v) { x.hp = v; }, mh: st.maxHp };
+    }
+    hit(A, D, mult, L) {
+      if (Math.random() < Math.max(0.03, Math.min(0.3, 0.05 + (D.agi - A.agi) * 0.03))) { L.push({ m: `${A.name}의 공격 — ${J(D.name, '이', '가')} 피했다`, k: 'sys' }); return; }
+      let m = mult, tag = '';
+      if (A.wc === 'spear' && Math.random() < 0.25) { m *= 1.6; tag = ' 찌르기!'; }
+      if (D.wc === 'sword' && Math.random() < 0.2) { m *= 0.5; tag += ' (흘려냄)'; }
+      const crit = Math.random() < 0.05 + A.luk * 0.02; if (crit) { m *= 1.5; tag = ' 급소!' + tag; }
+      const v = Math.max(1, Math.round(A.atk * (0.85 + Math.random() * 0.3) * m * 100 / (100 + D.def * 2.5)));
+      D.hp = Math.max(0, D.hp - v);
+      L.push({ m: `${A.name}의 공격${tag} ${D.name} -${v}`, k: '' });
+    }
+    autoHeal(F, L, used) {
+      if (!F.c || used.has(F.c.id) || F.hp > F.mh * 0.35) return;
+      const k = F.c.inv.findIndex(x => x && ITEMS[x.id].hp >= 15 && !ITEMS[x.id].tier); if (k < 0) return;
+      used.add(F.c.id); const n = ITEMS[F.c.inv[k].id].n; this.useItem(F.c, k); L.push({ m: `${J(F.name, '이', '가')} 급히 ${J(n, '을', '를')} 썼다`, k: 'good' });
+    }
+    tryFlee(F, O, L) {
+      if (!F.c || F.hp > F.mh * 0.3 || F.hp <= 0) return false;
+      const c = F.c, adj = ZONES[c.zone].adj.filter(z => this.s.zs[z] < 2);
+      if (!adj.length || Math.random() > Math.max(0.15, Math.min(0.85, 0.4 + (F.agi - O.agi) * 0.06))) { L.push({ m: `${J(F.name, '이', '가')} 달아나려 했지만 붙잡혔다`, k: 'bad' }); return false; }
+      c.zone = pick(adj); c.seen = {}; L.push({ m: `${J(F.name, '이', '가')} ${J(ZONES[c.zone].n, '으로', '로')} 달아났다`, k: 'warn' }); return true;
+    }
+    // 선제공격: 조우한 쪽만 때린다. 맞은 쪽은 그 자리에서 되받아치지 못한다.
+    // 소란: 전투가 난 구역. 그 구역과 이웃 구역에서만 들린다.
+    static noiseLife(len) { return Math.max(45, len * 0.25); }
+    noise(z, kind) {
+      const s = this.s; s.noise = s.noise.filter(n => n.z !== z && s.t - n.t < World.noiseLife(s.len)); s.noise.push({ z, t: s.t, k: kind });
+      const near = [z].concat(ZONES[z].adj);
+      for (const c of this.alive()) if (near.includes(c.zone) && !(c.lastNoise && c.lastNoise.z === z && s.t - c.lastNoise.t < 15)) { c.lastNoise = { z, t: s.t }; this.log(c, c.zone === z ? '바로 근처에서 싸우는 소리가 난다!' : `${ZONES[z].n} 쪽에서 소란이 들린다.`, 'warn'); }
+    }
+    strike(a, b) {
+      const s = this.s, A = this.ent(a), B = this.ent(b), L = [], hp0 = { a: Math.round(A.hp), b: Math.round(B.hp) };
+      this.noise(a.zone, 'fight'); a.act = null; if (b.act && (b.act.k === 'rest' || b.act.k === 'explore' || b.act.k === 'hunt')) b.act = null;
+      if (a.lines.meet) L.push({ m: `${a.name}: “${a.lines.meet}”`, k: 'talk' });
+      const n = A.wc === 'sword' && Math.random() < 0.35 ? 3 : 2;
+      for (let i = 0; i < n && B.hp > 0; i++) this.hit(A, B, 1.25 * (i === 0 && A.wc === 'bow' ? 1.6 : 1) * (A.wc === 'spear' ? 1.15 : 1), L);
+      const dealt = hp0.b - Math.round(B.hp), dead = B.hp <= 0;
+      L.push({ m: dead ? `${J(b.name, '이', '가')} 쓰러졌다.` : `${J(b.name, '은', '는')} 비틀거리며 몸을 숨겼다.`, k: dead ? 'bad' : 'sys' });
+      const rec = (c, ini) => { c.fight = { t: s.t, zone: a.zone, foe: { id: (ini ? b : a).id }, me0: ini ? hp0.a : hp0.b, op0: ini ? hp0.b : hp0.a, opEnd: Math.max(0, Math.round((ini ? B : A).hp)), opMh: (ini ? B : A).mh, ini, res: ini ? (dead ? 'win' : 'hit') : (dead ? 'lose' : 'ambushed'), log: L.slice(), ack: false }; };
+      rec(a, true); rec(b, false);
+      this.log(a, `${J(b.name, '을', '를')} 선제공격했다 — ${dealt} 피해${dead ? ', 쓰러뜨렸다' : ''}.`, 'good');
+      this.log(b, `${a.name}에게 기습당했다! 체력 -${dealt}.${dead ? '' : ' 되갚으려면 다시 마주쳐야 한다. 피하려면 다른 구역으로.'}`, 'bad');
+      b.grudge = a.id;
+      if (dead) this.kill(b, a, `${a.name}에게 당함`);
+      a.seenAt = Math.max(a.seenAt, s.t - IDLE + 30);
+    }
+    // a: 먼저 덤빈 쪽(생존자) · b: 생존자 또는 { mobTy } · opts.first: 'a' | 'b' | ''
+    skirmish(a, b, opts) {
+      this.noise(a.zone, b.mobTy ? 'mob' : 'fight');
+      const s = this.s, mob = !!b.mobTy; if (mob) { b.hp = MOBS[b.mobTy].hp; b.mh = b.hp; }
+      const A = this.ent(a), B = this.ent(b), L = [], used = new Set(), zone = a.zone, rounds = mob ? 10 : (opts.rounds || 3);
+      a.act = null; if (!mob) { b.act = null; b.inBase = false; a.seen[b.id] = 1; b.seen[a.id] = 1; }
+      const hp0 = { a: Math.round(A.hp), b: Math.round(B.hp) };
+      if (!mob && opts.first === 'a' && a.lines.meet) L.push({ m: `${a.name}: “${a.lines.meet}”`, k: 'talk' });
+      let end = '';
+      const dead = () => A.hp <= 0 ? 'a' : B.hp <= 0 ? 'b' : '';
+      if (opts.first) { const [X, Y] = opts.first === 'a' ? [A, B] : [B, A]; L.push({ m: `— 선제 —`, k: 'sys' }); this.hit(X, Y, X.wc === 'bow' ? 2.0 : 1.2, L); end = dead(); }
+      for (let r = 1; r <= rounds && !end; r++) {
+        L.push({ m: `— ${r}합 —`, k: 'sys' });
+        const order = (A.agi + Math.random() * 3 >= B.agi + Math.random() * 3) ? [[A, B], [B, A]] : [[B, A], [A, B]];
+        for (const [X, Y] of order) { this.hit(X, Y, 1, L); if ((end = dead())) break; }
+        if (end) break;
+        this.autoHeal(A, L, used); this.autoHeal(B, L, used);
+        if (this.tryFlee(A, B, L)) { end = 'fa'; break; }
+        if (this.tryFlee(B, A, L)) { end = 'fb'; break; }
+      }
+      if (!end) L.push({ m: '숨이 차서 서로 거리를 벌렸다.', k: 'sys' });
+      const record = (c, side) => {
+        if (!c || !c.id) return;
+        const me = side === 'a' ? A : B, op = side === 'a' ? B : A;
+        const res = end === side ? 'lose' : end === (side === 'a' ? 'b' : 'a') ? 'win' : end === 'f' + side ? 'fled' : end ? 'escaped' : 'draw';
+        c.fight = { t: s.t, zone, foe: op.c ? { id: op.c.id } : { mob: b.mobTy, mh: B.mh, hp: Math.max(0, Math.round(B.hp)) }, hp0: side === 'a' ? hp0 : { a: hp0.b, b: hp0.a }, me0: side === 'a' ? hp0.a : hp0.b, op0: side === 'a' ? hp0.b : hp0.a, opEnd: Math.max(0, Math.round(op.hp)), opMh: op.mh, ini: side === 'a', res, log: L.slice(-40), ack: false };
+        const RES = { win: '이겼다', lose: '쓰러졌다', fled: '달아났다', escaped: '상대가 달아났다', draw: '승부가 나지 않았다' };
+        const head = mob ? `${J(op.name, '과', '와')} 싸웠다` : !opts.first ? `${J(op.name, '과', '와')} 맞붙었다` : side === 'a' ? `${J(op.name, '을', '를')} 습격했다` : `${op.name}에게 습격당했다`;
+        this.log(c, `${head} — ${RES[res]}. (체력 ${Math.round(me.hp)}/${me.mh})`, res === 'win' ? 'good' : res === 'lose' ? 'bad' : 'warn');
+      };
+      record(a, 'a'); if (!mob) record(b, 'b');
+      if (end === 'b' && mob) { const M = MOBS[b.mobTy]; for (const d of M.drops) this.giveOrPile(a, d, 1); this.xp(a, M.xp); this.log(a, `${J(M.n, '을', '를')} 쓰러뜨렸다. ${JL(M.drops, '을', '를')} 얻었다.`, 'good'); }
+      else if (end === 'a') this.kill(a, mob ? null : b, mob ? `${MOBS[b.mobTy].n}에게 당함` : `${b.name}에게 당함`);
+      else if (end === 'b') this.kill(b, a, `${a.name}에게 당함`);
+      for (const c of [a, mob ? null : b]) if (c && c.alive) c.seenAt = Math.max(c.seenAt, s.t - IDLE + 30);
+    }
+    kill(c, killer, cause) {
+      const s = this.s;
+      c.alive = false; c.hp = 0; c.act = null; c.inBase = false; c.battle = 0; s.rank.unshift(c.id);
+      const items = c.inv.filter(Boolean); c.inv = new Array(INV).fill(null);
+      for (const k of SLOTS) if (c.eq[k] && ITEMS[c.eq[k]].tier > 1) items.push({ id: c.eq[k], n: 1 });
+      for (const it of items) { const left = killer ? this.give(killer, it.id, it.n) : it.n; this.pile(c.zone, it.id, left); }
+      if (c.base) { for (const it of c.base.stash) this.pile(c.base.zone, it.id, it.n); c.base = null; }
+      this.log(c, `${cause}. 여기까지다.`, 'bad');
+      this.feed(`☠ ${c.name} 탈락 — ${cause}. 남은 인원 ${this.alive().length}명`, 'bad');
+      if (c.lines.die) this.feed(`${c.name}: “${c.lines.die}”`, 'talk');
+      if (killer) {
+        killer.kills++; this.xp(killer, 50);
+        if (items.length) this.log(killer, `${c.name}의 짐을 챙겼다: ${items.map(i => ITEMS[i.id].n).join(', ')}`, 'good');
+        if (killer.lines.kill) this.feed(`${killer.name}: “${killer.lines.kill}”`, 'talk');
+      }
+      const al = this.alive();
+      if (al.length <= 1 && this.list.length > 1) {
+        if (al[0]) s.rank.unshift(al[0].id);
+        s.over = { w: al[0] ? al[0].id : 0, rank: s.rank.slice() };
+        this.feed(al[0] ? `실험 종료. 최후의 생존자는 ${al[0].name}.` : '실험 종료. 생존자는 없다.', 'sys');
+      }
+    }
+
+    // ---------- 구역 폐쇄 ----------
+    refuge(z) {
+      const s = this.s, seen = new Set([z]); let q = [z];
+      while (q.length) {
+        const open = q.filter(n => s.zs[n] < 2); if (open.length) { const safe = open.filter(n => s.zs[n] === 0); return pick(safe.length ? safe : open); }
+        const nx = []; for (const n of q) for (const a of ZONES[n].adj) if (!seen.has(a)) { seen.add(a); nx.push(a); } q = nx;
+      }
+      return z;
+    }
+    stepZones() {
+      const s = this.s; s.phase++; s.nextClose = s.t + s.len;
+      const closing = s.zs.map((v, i) => v === 1 ? i : -1).filter(i => i >= 0);
+      for (const z of closing) s.zs[z] = 2;
+      for (const z of closing) {
+        delete s.piles[z];
+        for (const c of this.alive()) {
+          if (c.base && c.base.zone === z) { c.base = null; c.inBase = false; this.log(c, `${ZONES[z].n}의 거점이 폐쇄와 함께 무너졌다. 창고의 물건은 건지지 못했다.`, 'bad'); }
+          if (c.zone !== z) continue;
+          c.zone = this.refuge(z); c.act = null; c.seen = {}; c.hp = Math.max(1, c.hp - this.stats(c).maxHp * 0.15);
+          this.log(c, `${J(ZONES[z].n, '이', '가')} 폐쇄되었다. 쫓기듯 ${J(ZONES[c.zone].n, '으로', '로')} 빠져나왔다. (체력 -15%)`, 'bad');
+        }
+      }
+      if (closing.length) this.feed(`⛔ ${closing.map(z => ZONES[z].n).join(', ')} 폐쇄.`, 'bad');
+      const next = s.order.length > 1 ? s.order.splice(0, Math.min(s.order.length > 12 ? 3 : 2, s.order.length - 1)) : [];
+      for (const z of next) s.zs[z] = 1;
+      if (next.length) this.feed(`⚠ 다음 폐쇄 예고: ${next.map(z => ZONES[z].n).join(', ')}.`, 'warn');
+      else if (!s.final) {
+        s.final = true; s.duelT = s.t + Math.max(20, s.len / 5);
+        for (const c of this.alive()) if (c.base) { for (const it of c.base.stash) this.giveOrPile(c, it.id, it.n); c.base = null; c.inBase = false; this.log(c, '숨을 곳이 사라졌다. 거점은 더 이상 안전하지 않다.', 'bad'); }
+        this.feed(`최종 구역은 ${ZONES[s.order[0]].n}. 이제 숨을 곳은 없다.`, 'warn');
+      }
+    }
+
+    // ---------- 시간 진행 ----------
+    advance(dt) {
+      const s = this.s; s.t += dt; if (!s.started || s.over) return;
+      if (!s.final && s.t >= s.nextClose) this.stepZones();
+      if (s.noise.length && s.noise[0] && s.t - s.noise[0].t > World.noiseLife(s.len)) s.noise = s.noise.filter(n => s.t - n.t < World.noiseLife(s.len));
+      if (s.t >= s.pvT) { s.pvT = s.t + s.len / 3; for (const k in s.pv) if (--s.pv[k] <= 0) delete s.pv[k]; }
+      for (const c of this.list) {
+        if (!c.alive) continue;
+        const m = this.stats(c), rest = c.act && c.act.k === 'rest';
+        c.hunger = Math.max(0, c.hunger - dt * 100 / (s.len * 2.5) * (c.inBase ? 0.5 : 1) * Math.max(0.5, 1 - 0.04 * c.st.con));
+        if (c.hunger <= 0 && !c.battle) c.hp = Math.max(1, c.hp - dt * m.maxHp / (s.len * 2));
+        c.en = Math.min(100, c.en + dt * (rest ? World.restRate(s.len, c.inBase) * (1 + 0.1 * (c.st.end || 0)) : World.idleRate(s.len)));
+        if (rest) { c.hp = Math.min(m.maxHp, c.hp + dt * m.maxHp / (s.len * 0.5) * (c.inBase ? 2 : 0.6)); if (c.en >= 100 && (c.hp >= m.maxHp || !c.inBase)) { c.act = null; this.log(c, '충분히 쉬었다.'); } }
+        if (c.hp > m.maxHp) c.hp = m.maxHp;
+        if (c.act && (c.act.leg || c.act.end) && s.t >= (c.act.leg || c.act.end)) this.finish(c);
+        if (!c.alive) continue;
+        if (c.enc) { const o = s.chars[c.enc.id]; if (!o || !o.alive || o.zone !== c.zone || o.inBase || s.t - c.enc.t > Math.max(40, s.len * 0.15)) c.enc = null; }
+        if (c.bot) { if (!c.act && !c.battle && s.t >= c.think) this.think(c); }
+        else if (!c.inBase && !c.battle && !c.act && c.base && c.base.zone === c.zone && s.t - c.seenAt > IDLE) { c.inBase = true; c.seen = {}; this.log(c, '한동안 움직임이 없어, 거점으로 돌아가 문을 잠갔다.', 'sys'); }
+      }
+      if (s.final && !s.over && s.t >= s.duelT) {
+        s.duelT = s.t + Math.max(20, s.len / 5);
+        const free = shuffle(this.alive().filter(c => !c.battle));
+        for (let i = 0; i + 1 < free.length; i += 2) { free[i].zone = free[i + 1].zone = s.order[0]; this.skirmish(free[i], free[i + 1], { first: '', rounds: 6 }); }
+      }
+    }
+
+    think(c) {
+      while (c.sp > 0) { const ks = ['str', 'str', 'con', 'con', 'agi', 'end', 'luk'].filter(k => c.st[k] < STAT_MAX); if (!ks.length) break; this.cmd(c.id, { k: 'stat', s: pick(ks) }); }
+      const s = this.s, m = this.stats(c), hr = c.hp / m.maxHp, z = c.zone, go = k => { const e = this.cmd(c.id, k); c.think = s.t + 2 + Math.random() * 4; return e; };
+      c.think = s.t + 2 + Math.random() * 4;
+      for (let k = 0; k < INV; k++) { const sl = c.inv[k]; if (!sl) continue; const it = ITEMS[sl.id]; if (it.tier && (!c.eq[it.t] || ITEMS[c.eq[it.t]].tier < it.tier)) this.useItem(c, k); }
+      for (const rec of RECIPES) { const it = ITEMS[rec.out]; if (this.has(c, rec.in) && (it.tier ? (!c.eq[it.t] || ITEMS[c.eq[it.t]].tier < it.tier) : this.count(c, rec.out) < (it.t === 'mat' ? 1 : 2))) { this.craft(c, rec.out); break; } }
+      if (c.hunger < 45) { const k = c.inv.findIndex(x => x && ITEMS[x.id].hun); if (k >= 0) this.useItem(c, k); }
+      if (hr < 0.5) { const k = c.inv.findIndex(x => x && ITEMS[x.id].hp >= 15); if (k >= 0) this.useItem(c, k); }
+      if (!c.inv.includes(null)) { let w = -1, wn = 0; c.inv.forEach((x, k) => { if (x && ITEMS[x.id].t === 'mat' && x.n >= wn) { wn = x.n; w = k; } }); if (w >= 0) c.inv[w] = null; }
+      const adj = ZONES[z].adj.filter(a => s.zs[a] < 2), safe = adj.filter(a => s.zs[a] === 0);
+      if (s.zs[z] === 1 && adj.length && c.en >= COST.move) return go({ k: 'move', to: pick(safe.length ? safe : adj) });
+      if (c.en < 25 || hr < 0.35) { go({ k: 'rest' }); c.restUntil = s.t + s.len * 0.12; return; }
+      if (c.enc) { const o = s.chars[c.enc.id]; if (o && o.alive && o.zone === z && !o.inBase && c.en >= COST.attack && hr > 0.35) { const om = this.stats(o); if (c.grudge === o.id || m.atk * c.hp >= om.atk * o.hp * 0.6 || Math.random() < 0.3) return go({ k: 'attack', who: o.id }); } this.cmd(c.id, { k: 'ignore' }); }
+      if (c.fight && !c.fight.ack && c.fight.res === 'ambushed') { c.fight.ack = true; const safe = ZONES[z].adj.filter(a => s.zs[a] === 0); if (hr < 0.5 && safe.length && c.en >= COST.move) return go({ k: 'move', to: pick(safe) }); }
+      if (false) { const o = null; if (o) return go({ k: 'attack', who: o.id }); }
+      if (s.piles[z] && s.piles[z].length && c.inv.includes(null)) this.cmd(c.id, { k: 'loot' });
+      const r = Math.random();
+      { const nz = s.noise.filter(n => n.k === 'fight' && ZONES[z].adj.includes(n.z) && s.zs[n.z] === 0); if (nz.length && c.en >= COST.move + 20) { if (hr > 0.75 && Math.random() < 0.35) return go({ k: 'move', to: nz[0].z }); } }
+      if (r < 0.12 && safe.length) return go({ k: 'move', to: pick(safe) });
+      if (r < 0.24 && hr > 0.7 && this.count(c, 'leather') < 2) return go({ k: 'hunt' });
+      if (c.en < COST.explore) return go({ k: 'rest' });
+      go({ k: 'explore' });
+    }
+
+    // ---------- 화면용 요약 ----------
+    view(id) {
+      const s = this.s, c = s.chars[id], r = Math.round;
+      const v = { t: s.t, started: s.started, over: s.over, tempo: s.tempo, len: s.len, nextClose: s.nextClose, phase: s.phase, final: s.final, zs: s.zs, feed: s.feed.slice(-40), chat: s.chat.slice(-60), roster: this.list.map(o => ({ id: o.id, al: o.alive ? 1 : 0, k: o.kills, on: o.bot || o.online ? 1 : 0 })) };
+      if (!c) return v;
+      const m = this.stats(c);
+      { const near = [c.zone].concat(ZONES[c.zone].adj); v.noise = c.alive ? s.noise.filter(n => near.includes(n.z) && s.t - n.t < World.noiseLife(s.len)).map(n => ({ z: n.z, age: (s.t - n.t) / World.noiseLife(s.len), k: n.k })) : []; }
+      v.me = { id: c.id, hp: r(c.hp), hunger: r(c.hunger), en: r(c.en), zone: c.zone, alive: c.alive, lvl: c.lvl, xp: c.xp, need: c.lvl * 30, kills: c.kills, inv: c.inv, eq: c.eq, act: c.act, base: c.base, inBase: c.inBase, st: m, raw: c.st, sp: c.sp || 0, bf: { atk: c.bf.atk > s.t, agi: c.bf.agi > s.t }, log: c.log, visits: c.visits };
+      if (c.alive && s.started) {
+        const others = this.list.filter(o => o.alive && o !== c && o.zone === c.zone && !o.inBase);
+        v.here = {
+          worn: ZONES[c.zone].places.filter(p => (s.pv[p] || 0) >= 4),
+          signs: c.inBase ? 0 : others.length, pile: (s.piles[c.zone] || []).reduce((a, b) => a + b.n, 0),
+          enc: c.enc && s.chars[c.enc.id] ? (() => { const o = s.chars[c.enc.id], h = o.hp / this.stats(o).maxHp; return { id: o.id, lvl: o.lvl, w: o.eq.weapon, cond: h > 0.7 ? '멀쩡함' : h > 0.35 ? '다침' : '빈사', grudge: c.grudge === o.id }; })() : null,
+          seen: c.inBase ? [] : others.filter(o => c.seen[o.id]).map(o => { const h = o.hp / this.stats(o).maxHp; return { id: o.id, lvl: o.lvl, w: o.eq.weapon, cond: h > 0.7 ? '멀쩡함' : h > 0.35 ? '다침' : '빈사', busy: o.battle ? 1 : 0 }; }),
+        };
+      }
+      const F = c.fight;
+      if (F && !F.ack && s.t - F.t < Math.max(90, s.len * 0.3)) v.fight = { ...F, foeNow: F.foe.id ? (() => { const o = s.chars[F.foe.id]; return { id: o.id, hp: Math.round(o.hp), mh: this.stats(o).maxHp, al: o.alive, zone: o.zone }; })() : null };
+      return v;
+    }
+    people() { return this.list.map(c => ({ id: c.id, name: c.name, color: c.color, img: c.img, bot: c.bot, bio: c.bio })); }
+  }
+
+  Object.assign(X, { STAT_FX, START_PTS, STAT_MAX, J, SLOTS, World, cleanChar, TEMPO, DUR, COST, INV, STASH });
+})(typeof module !== 'undefined' ? module.exports : (self.GameWorld = {}), typeof require !== 'undefined' ? require('./data.js') : self.GameData);
+</script>
+<script>
+// 클라이언트: 메뉴, 세션(오프라인=브라우저 안의 세계, 온라인=서버), 화면 그리기
+(function () {
+  'use strict';
+  const D = GameData, G = GameWorld, { ITEMS, RECIPES, BASE_COST, WEAPONS, ZONES, MOBS, COLORS } = D;
+  const $ = id => document.getElementById(id), OFF = !!window.OFFLINE_ONLY;
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* 저장 불가 환경 */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* 무시 */ } },
+  };
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const clock = t => { t = Math.max(0, Math.floor(t)); const h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), s = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); };
+  const cmdAttr = c => `data-cmd='${esc(JSON.stringify(c))}'`;
+  const cache = {};
+  function set(id, html) { if (cache[id] === html) return false; cache[id] = html; $(id).innerHTML = html; return true; }
+  function face(p, size) {
+    const st = `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.45)}px`;
+    if (p && p.img) return `<img class="face" src="${esc(p.img)}" alt="" style="${st}">`;
+    return `<span class="face" style="${st};background:${esc(p ? p.color : '#888')}">${esc(p ? [...p.name][0] : '?')}</span>`;
+  }
+  let toastT = 0;
+  function toast(m) { const t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2400); }
+
+  // ================= 캐릭터 만들기 =================
+  let char = G.cleanChar(store.get('ic_char', { name: '', color: COLORS[3], weapon: 'sword', st: { str: 3, agi: 2, con: 3, luk: 2, end: 2 } }));
+  if (char.name === '이름 없는 생존자') char.name = '';
+  const STN = {}; for (const k in G.STAT_FX) STN[k] = G.STAT_FX[k];
+  function saveChar() { store.set('ic_char', char); }
+  function renderCreator() {
+    $('facePrev').innerHTML = face({ name: char.name || '?', color: char.color, img: char.img }, 84);
+    $('colors').innerHTML = COLORS.map(c => `<button class="sw" data-c="${c}" style="background:${c}" aria-pressed="${c === char.color}" aria-label="색 ${c}"></button>`).join('');
+    $('weapons').innerHTML = Object.keys(WEAPONS).map(k => `<button class="wp" data-w="${k}" aria-pressed="${k === char.weapon}"><b>${ITEMS[k + 1].e} ${WEAPONS[k].n}</b><small>${WEAPONS[k].d}</small></button>`).join('');
+    const left = G.START_PTS - Object.values(char.st).reduce((a, b) => a + b, 0);
+    $('left').textContent = left;
+    $('stats').innerHTML = Object.keys(STN).map(k => `<div class="stat"><span>${STN[k][0]}</span><button data-s="${k}" data-d="-1" ${char.st[k] <= 0 ? 'disabled' : ''} aria-label="${STN[k][0]} 내리기">−</button><div class="pips">${[0, 1, 2, 3, 4, 5].map(i => `<i class="${i < char.st[k] ? 'on' : ''}"></i>`).join('')}</div><button data-s="${k}" data-d="1" ${char.st[k] >= 6 || left <= 0 ? 'disabled' : ''} aria-label="${STN[k][0]} 올리기">+</button><small>${STN[k][1]}</small></div>`).join('');
+    saveChar();
+  }
+  for (const [id, set_] of [['cname', v => char.name = v], ['cbio', v => char.bio = v], ['l_meet', v => char.lines.meet = v], ['l_kill', v => char.lines.kill = v], ['l_die', v => char.lines.die = v]]) {
+    $(id).value = id === 'cname' ? char.name : id === 'cbio' ? char.bio : char.lines[id.slice(2)];
+    $(id).oninput = e => { set_(e.target.value); saveChar(); if (id === 'cname') $('facePrev').innerHTML = face({ name: char.name || '?', color: char.color, img: char.img }, 84); };
+  }
+  $('menu').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.c) char.color = b.dataset.c; else if (b.dataset.w) char.weapon = b.dataset.w;
+    else if (b.dataset.s) { char.st[b.dataset.s] = Math.max(0, Math.min(6, char.st[b.dataset.s] + +b.dataset.d)); } else return;
+    renderCreator();
+  });
+  $('imgBtn').onclick = () => $('cimg').click();
+  $('imgClr').onclick = () => { char.img = ''; renderCreator(); };
+  $('cimg').onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = c.height = 112; const s = Math.min(im.width, im.height); c.getContext('2d').drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, 112, 112); char.img = c.toDataURL('image/jpeg', 0.82); renderCreator(); }; im.onerror = () => toast('이미지를 읽지 못했습니다'); im.src = rd.result; };
+    rd.readAsDataURL(f); e.target.value = '';
+  };
+  $('tempo').innerHTML = Object.keys(G.TEMPO).map(k => `<option value="${k}">${G.TEMPO[k].n}</option>`).join('');
+  $('bots').oninput = e => { $('botsN').textContent = e.target.value; };
+  renderCreator();
+  if (OFF) { $('onBox').hidden = true; $('onNote').hidden = false; }
+  const saved = store.get('ic_save', null);
+  $('contBtn').hidden = !(saved && saved.s && !saved.s.over && saved.s.zs.length === ZONES.length);
+  const myChar = () => ({ ...char, name: char.name.trim() || '이름 없는 생존자' });
+
+  // ================= 세션 =================
+  let mode = null, world = null, ws = null, myId = 0, view = null, gm = false, people = {}, loop = 0, tab = 'map', sel = -1, speed = 1, roomName = '', saveN = 0, askLeave = false;
+  function enter() { for (const k in cache) delete cache[k]; view = null; tab = 'map'; sel = -1; askLeave = false; $('menu').hidden = true; $('game').hidden = false; scrollTo(0, 0); initMap(); }
+  function toMenu() {
+    clearInterval(loop); if (ws) { const w = ws; ws = null; w.close(); }
+    if (mode === 'off' && world) saveOff();
+    world = null; mode = null; $('game').hidden = true; $('menu').hidden = false;
+    const sv = store.get('ic_save', null); $('contBtn').hidden = !(sv && sv.s && !sv.s.over && sv.s.zs.length === ZONES.length);
+  }
+  function saveOff() { if (world.s.over) store.del('ic_save'); else store.set('ic_save', { s: world.s, id: myId }); }
+  function runOff() {
+    mode = 'off'; gm = true; roomName = '혼자 하기'; people = {};
+    enter(); clearInterval(loop);
+    loop = setInterval(() => { stepOff(0.25 * speed); if (++saveN % 20 === 0) saveOff(); }, 250);
+    stepOff(0);
+  }
+  function stepOff(dt) {
+    const me = world.s.chars[myId]; me.online = true;
+    world.advance(dt);
+    for (const p of world.people()) people[p.id] = p;
+    view = world.view(myId); render();
+  }
+  $('offBtn').onclick = () => { world = G.World.create({ tempo: $('tempo').value }); myId = world.addChar(myChar(), false).id; world.addBots(Math.max(1, +$('bots').value)); world.start(); speed = 1; runOff(); };
+  $('contBtn').onclick = () => { const sv = store.get('ic_save', null); if (!sv) return; world = new G.World(sv.s); myId = sv.id; runOff(); };
+  $('onBtn').onclick = () => {
+    $('onErr').textContent = '';
+    let sock; try { sock = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host); } catch (e) { $('onErr').textContent = '서버에 연결할 수 없습니다'; return; }
+    ws = sock; mode = 'on';
+    sock.onopen = () => sock.send(JSON.stringify({ t: 'join', room: $('room').value, pw: $('pw').value, char: myChar(), tempo: $('tempo').value, bots: +$('bots').value }));
+    sock.onmessage = e => {
+      const m = JSON.parse(e.data);
+      if (m.t === 'err') { $('onErr').textContent = m.m; ws = null; sock.close(); }
+      else if (m.t === 'ok') { myId = m.id; roomName = m.room; if ($('game').hidden) enter(); }
+      else if (m.t === 'people') { people = {}; for (const p of m.list) people[p.id] = p; for (const k in cache) delete cache[k]; }
+      else if (m.t === 'view') { view = m.v; gm = m.gm; render(); }
+      else if (m.t === 'toast') toast(m.m);
+    };
+    sock.onclose = () => { if (ws === sock) { ws = null; toMenu(); toast('서버와 연결이 끊어졌습니다'); } };
+    sock.onerror = () => { if (ws === sock && $('game').hidden) $('onErr').textContent = '서버에 연결할 수 없습니다'; };
+  };
+  function send(c) {
+    if (mode === 'off') { const e = world.cmd(myId, c); if (e) toast(e); stepOff(0); }
+    else if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'cmd', c }));
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-cmd],[data-tab],[data-slot],[data-do],[data-cf],[data-ci],[data-goal]'); if (!b || b.disabled) return;
+    if (b.dataset.cmd) send(JSON.parse(b.dataset.cmd));
+    else if (b.dataset.tab) { tab = b.dataset.tab; render(); }
+    else if (b.dataset.slot) { sel = sel === +b.dataset.slot ? -1 : +b.dataset.slot; render(); }
+    else if (b.dataset.do === 'leave') { if (mode === 'on' || askLeave) toMenu(); else { askLeave = true; render(); } }
+    else if (b.dataset.do === 'stay') { askLeave = false; render(); }
+    else if (b.dataset.cf) { craftCat = b.dataset.cf; render(); }
+    else if (b.dataset.ci) { craftSel = b.dataset.ci; if (tab !== 'craft') tab = 'craft'; render(); }
+    else if (b.dataset.goal) { goal = goal === b.dataset.goal ? '' : b.dataset.goal; render(); }
+    else if (b.dataset.do === 'speed') { speed = speed === 1 ? 3 : 1; render(); }
+    else if (b.dataset.do === 'start') ws && ws.send(JSON.stringify({ t: 'start' }));
+    else if (b.dataset.do === 'reset') { if (mode === 'off') { toMenu(); $('offBtn').click(); } else ws && ws.send(JSON.stringify({ t: 'reset' })); }
+  });
+  document.addEventListener('input', e => { if (e.target.id === 'craftQ') { craftQ = e.target.value; const pos = e.target.selectionStart; delete cache.pane; render(); const el = $('craftQ'); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } });
+  $('chatForm').onsubmit = e => { e.preventDefault(); const v = $('chatIn').value.trim(); if (v) send({ k: 'chat', m: v }); $('chatIn').value = ''; };
+
+  // ================= 지도 (도시 평면도) =================
+  const CATS = D.CATS, PLACES = D.PLACES, CS = 6, GX = 100, GY = 88, U = 12;
+  let centerPending = true, grid = null, zcell = null, blds = [], ponds = [], zovSig = '', baseK = 1; const mz = { k: 1, x: 0, y: 0 };
+  const isle = (x, y) => { const dx = x - 300, dy = y - 262, a = Math.atan2(dy, dx), rx = 272 + 12 * Math.sin(3 * a + 1) + 8 * Math.sin(5 * a), ry = 240 + 10 * Math.sin(4 * a + 2) + 6 * Math.sin(7 * a); return dx * dx / (rx * rx) + dy * dy / (ry * ry); };
+  const H2 = (a, b) => { let h = Math.imul(a + 7, 374761393) ^ Math.imul(b + 13, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+  // 칸 종류: 0 바다, 1 땅, 2 도로, 3 건물, 4 물, 5 광장, 7 가장자리
+  function buildGrid() {
+    grid = new Uint8Array(GX * GY); zcell = new Uint8Array(GX * GY); blds = []; ponds = [];
+    const at = (x, y) => (x < 0 || y < 0 || x >= GX || y >= GY) ? -1 : y * GX + x;
+    const zoneOf = (X, Y) => { let b = 0, bd = 1e9; for (let i = 0; i < ZONES.length; i++) { const dd = (ZONES[i].x - X) ** 2 + (ZONES[i].y - Y) ** 2; if (dd < bd) { bd = dd; b = i; } } return b; };
+    for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) {
+      const bx = x >> 2, by = y >> 2, i = y * GX + x;
+      if (isle(bx * 24 + 12, by * 24 + 12) < 0.84 + 0.2 * H2(bx, by)) grid[i] = 1;
+      zcell[i] = zoneOf(x * CS + 3, y * CS + 3);
+    }
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const fill = (x0, y0, x1, y1, t, cond) => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) { const i = at(x, y); if (i >= 0 && grid[i] && (!cond || cond(grid[i]))) grid[i] = t; } };
+    const C = Z => [Z.x / CS | 0, Z.y / CS | 0];
+    // 물
+    for (const [z, n, rmin, rmax] of ZONES.map((Z, i) => [i, Z.pond, 2, Z.pond > 2 ? 5 : 3]).filter(x => x[1])) {
+      const [cx, cy] = C(ZONES[z]);
+      for (let k = 0; k < n; k++) {
+        const px = cx + (rnd() - 0.5) * 9, py = cy + (rnd() - 0.5) * 8, r = rmin + rnd() * (rmax - rmin);
+        ponds.push([px * CS, py * CS, r * CS]);
+        for (let y = Math.floor(py - r); y <= py + r; y++) for (let x = Math.floor(px - r); x <= px + r; x++) { const i = at(x, y); if (i >= 0 && grid[i] && (x + .5 - px) ** 2 + (y + .5 - py) ** 2 <= r * r) grid[i] = 4; }
+      }
+    }
+    // 큰길: 이어진 구역을 꺾인 길로 잇는다
+    ZONES.forEach((Z, i) => { for (const j of Z.adj) if (j > i) {
+      const [ax, ay] = C(Z), [bx, by] = C(ZONES[j]);
+      if (H2(i, j) < 0.5) { fill(ax, ay, bx, ay + 1, 2); fill(bx, ay, bx + 1, by, 2); } else { fill(ax, ay, ax + 1, by, 2); fill(ax, by, bx, by + 1, 2); }
+    } });
+    // 골목
+    ZONES.forEach((Z, z) => {
+      const [cx, cy] = C(Z);
+      for (let k = 0; k < 3; k++) {
+        const hor = rnd() < 0.5, ox = cx + Math.round((rnd() - 0.5) * 14), oy = cy + Math.round((rnd() - 0.5) * 12);
+        for (const dir of [-1, 1]) for (let s = 0; s < 8; s++) {
+          const x = hor ? ox + s * dir : ox, y = hor ? oy : oy + s * dir, i = at(x, y);
+          if (i < 0 || !grid[i] || zcell[i] !== z) break; if (grid[i] === 1) grid[i] = 2;
+        }
+      }
+    });
+    // 중앙 광장
+    { const [cx, cy] = C(ZONES[0]); fill(cx - 7, cy - 7, cx + 7, cy + 7, 5, t => t !== 4); }
+    // 가장자리
+    for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) {
+      const i = y * GX + x; if (grid[i] !== 1) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]]) { const j = at(x + dx, y + dy); if (j < 0 || !grid[j]) { grid[i] = 7; break; } }
+    }
+    // 건물
+    for (let n = 0; n < 9000; n++) {
+      const x = rnd() * GX | 0, y = rnd() * GY | 0, w = 2 + (rnd() * 5 | 0), h = 2 + (rnd() * 4 | 0); let ok = true;
+      for (let yy = y - 1; yy <= y + h && ok; yy++) for (let xx = x - 1; xx <= x + w && ok; xx++) { const i = at(xx, yy); if (i < 0 || grid[i] !== 1) ok = false; }
+      if (!ok) continue;
+      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) grid[yy * GX + xx] = 3;
+      blds.push([x, y, w, h]);
+    }
+  }
+  function initMap() {
+    if (!grid) {
+      buildGrid();
+      const g = $('terrain').getContext('2d'), col = { 1: '#4c5159', 2: '#7c838d', 3: '#4c5159', 4: '#4c5159', 5: '#8a919b', 7: '#2c3036' };
+      g.clearRect(0, 0, 1200, 1048);
+      g.fillStyle = 'rgba(0,0,0,.5)';
+      for (let i = 0; i < GX * GY; i++) if (grid[i]) g.fillRect((i % GX) * U + 6, (i / GX | 0) * U + 9, U, U);
+      for (let i = 0; i < GX * GY; i++) if (grid[i]) { g.fillStyle = col[grid[i]]; g.fillRect((i % GX) * U, (i / GX | 0) * U, U + 0.5, U + 0.5); }
+      g.save(); g.beginPath(); for (let i = 0; i < GX * GY; i++) if (grid[i] === 4) g.rect((i % GX) * U, (i / GX | 0) * U, U, U); g.clip();
+      for (const [x, y, r] of ponds) { g.beginPath(); g.arc(x * 2, y * 2, r * 2 + 6, 0, 6.2832); g.fillStyle = '#4f8f98'; g.fill(); }
+      for (const [x, y, r] of ponds) { g.beginPath(); g.arc(x * 2, y * 2, r * 2 + 2, 0, 6.2832); g.fillStyle = '#74c2ca'; g.fill(); }
+      g.restore();
+      for (const [x, y, w, h] of blds) { g.fillStyle = '#2f3339'; g.fillRect(x * U + 1, y * U + 1, w * U - 2, h * U - 2); g.strokeStyle = '#5f656e'; g.lineWidth = 1.5; g.strokeRect(x * U + 2, y * U + 2, w * U - 4, h * U - 4); if (w > 3 && h > 2) { g.strokeStyle = '#454a52'; g.strokeRect(x * U + 7, y * U + 7, w * U - 14, h * U - 14); } }
+      { const Z = ZONES[0]; g.beginPath(); g.arc(Z.x * 2, Z.y * 2, 34, 0, 6.2832); g.fillStyle = '#353940'; g.fill(); g.strokeStyle = '#6a7079'; g.lineWidth = 2; g.stroke(); g.beginPath(); g.arc(Z.x * 2, Z.y * 2, 20, 0, 6.2832); g.strokeStyle = '#4a4f57'; g.stroke(); }
+      g.strokeStyle = '#191b1f'; g.lineWidth = 3; g.beginPath();
+      for (let y = 0; y < GY; y++) for (let x = 0; x < GX; x++) {
+        if (!grid[y * GX + x]) continue; const X = x * U, Y = y * U;
+        if (x === GX - 1 || !grid[y * GX + x + 1]) { g.moveTo(X + U, Y); g.lineTo(X + U, Y + U); }
+        if (x === 0 || !grid[y * GX + x - 1]) { g.moveTo(X, Y); g.lineTo(X, Y + U); }
+        if (y === GY - 1 || !grid[(y + 1) * GX + x]) { g.moveTo(X, Y + U); g.lineTo(X + U, Y + U); }
+        if (y === 0 || !grid[(y - 1) * GX + x]) { g.moveTo(X, Y); g.lineTo(X + U, Y); }
+      }
+      g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = 2; g.setLineDash([7, 5]); g.beginPath();
+      for (let y = 0; y < GY - 1; y++) for (let x = 0; x < GX - 1; x++) {
+        const i = y * GX + x; if (!grid[i]) continue;
+        if (grid[i + 1] && zcell[i + 1] !== zcell[i]) { g.moveTo((x + 1) * U, y * U); g.lineTo((x + 1) * U, (y + 1) * U); }
+        if (grid[i + GX] && zcell[i + GX] !== zcell[i]) { g.moveTo(x * U, (y + 1) * U); g.lineTo((x + 1) * U, (y + 1) * U); }
+      }
+      g.stroke(); g.setLineDash([]);
+      $('legend').hidden = true;
+    }
+    zovSig = ''; mz.k = 1; mz.x = mz.y = 0; centerPending = true; fitMap();
+  }
+  function drawZov(zs) {
+    const sig = zs.join(''); if (sig === zovSig) return; zovSig = sig;
+    const g = $('zov').getContext('2d'); g.clearRect(0, 0, 1200, 1048);
+    const pc = document.createElement('canvas'); pc.width = pc.height = 16; const q = pc.getContext('2d');
+    q.fillStyle = 'rgba(120,20,24,.55)'; q.fillRect(0, 0, 16, 16); q.strokeStyle = 'rgba(255,90,82,.55)'; q.lineWidth = 3; q.beginPath(); q.moveTo(-4, 20); q.lineTo(20, -4); q.moveTo(-4, 4); q.lineTo(4, -4); q.moveTo(12, 20); q.lineTo(20, 12); q.stroke();
+    const pat = g.createPattern(pc, 'repeat');
+    for (const want of [1, 2]) {
+      g.beginPath(); let any = false;
+      for (let i = 0; i < GX * GY; i++) if (grid[i] && zs[zcell[i]] === want) { g.rect((i % GX) * U, (i / GX | 0) * U, U, U); any = true; }
+      if (any) { g.fillStyle = want === 2 ? pat : 'rgba(255,181,71,.22)'; g.fill('nonzero'); }
+    }
+  }
+  function applyMz() {
+    const V = $('mapView'), vw = V.clientWidth, vh = V.clientHeight, s = baseK * mz.k, w = 600 * s, h = 524 * s;
+    mz.x = w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, mz.x)); mz.y = h <= vh ? (vh - h) / 2 : Math.min(0, Math.max(vh - h, mz.y));
+    $('mapInner').style.transform = `translate(${Math.round(mz.x)}px,${Math.round(mz.y)}px) scale(${s})`;
+    V.style.touchAction = mz.k > 1 ? 'none' : 'pan-y';
+  }
+  function fitMap() { const V = $('mapView'); if (!V.clientWidth) return; baseK = Math.min(V.clientWidth / 600, V.clientHeight / 524); applyMz(); }
+  function zoomAt(k1, cx, cy) { k1 = Math.max(1, Math.min(4, k1)); const r = k1 / mz.k; mz.x = cx - (cx - mz.x) * r; mz.y = cy - (cy - mz.y) * r; mz.k = k1; applyMz(); }
+  addEventListener('resize', fitMap);
+  (function mapInput() {
+    const V = $('mapView'); let dn = null, dragged = false;
+    V.addEventListener('wheel', e => { e.preventDefault(); const r = V.getBoundingClientRect(); zoomAt(mz.k * (e.deltaY < 0 ? 1.25 : 0.8), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    V.addEventListener('pointerdown', e => { if (e.target.closest('#zoom')) return; dn = { x: e.clientX, y: e.clientY, mx: mz.x, my: mz.y }; dragged = false; });
+    addEventListener('pointermove', e => { if (!dn) return; const dx = e.clientX - dn.x, dy = e.clientY - dn.y; if (!dragged && Math.hypot(dx, dy) < 5) return; dragged = true; V.classList.add('drag'); mz.x = dn.mx + dx; mz.y = dn.my + dy; applyMz(); });
+    const up = () => { dn = null; V.classList.remove('drag'); }; addEventListener('pointerup', up); addEventListener('pointercancel', up);
+    V.addEventListener('click', e => { if (dragged) { e.stopPropagation(); e.preventDefault(); dragged = false; } }, true);
+    $('zoom').addEventListener('click', e => {
+      const b = e.target.closest('[data-zoom]'); if (!b) return; const z = +b.dataset.zoom;
+      if (z) zoomAt(mz.k * (z > 0 ? 1.5 : 1 / 1.5), V.clientWidth / 2, V.clientHeight / 2);
+      else if (view && view.me) { const Z = ZONES[view.me.zone]; mz.k = 2.2; const s = baseK * mz.k; mz.x = V.clientWidth / 2 - Z.x * s; mz.y = V.clientHeight / 2 - Z.y * s; applyMz(); }
+    });
+    $('mapSvg').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { const n = e.target.closest('[data-cmd]'); if (n) { e.preventDefault(); send(JSON.parse(n.dataset.cmd)); } } });
+  })();
+  function renderMap(v) {
+    drawZov(v.zs);
+    const me = v.me, z = me ? me.zone : -1, free = me && me.alive && v.started && !v.over && !v.battle && !me.act && !me.inBase;
+    let h = '';
+    if (me && me.act && me.act.k === 'move') { const pts = [z].concat(me.act.path || [me.act.to]); h += `<polyline class="route" fill="none" points="${pts.map(q => ZONES[q].x + ',' + ZONES[q].y).join(' ')}"/>`; }
+    curZs = v.zs; curFrom = free ? z : -1;
+    const gneed = me ? goalNeeds(me) : [];
+    ZONES.forEach((Z, i) => {
+      if (v.zs[i] === 2 || !gneed.length) return; const ms = gneed.filter(id => sources(id).includes(i)); if (!ms.length) return;
+      const w = ms.length * 17 + 6; h += `<g class="gmat"><rect x="${Z.x - w / 2}" y="${Z.y + 13}" width="${w}" height="18" rx="2"/>${ms.map((id, k) => `<text x="${Z.x - w / 2 + 11 + k * 17}" y="${Z.y + 26.5}" text-anchor="middle">${ITEMS[id].e}<title>${ITEMS[id].n}</title></text>`).join('')}</g>`;
+    });
+    ZONES.forEach((Z, i) => {
+      const st = v.zs[i], rt = free && i !== z && st < 2 ? routeC(z, i, v.zs) : null, adj = !!rt, w = Z.n.length * 13 + 18;
+      h += `<g class="zl z${st} ${i === z ? 'cur' : ''} ${adj ? 'adj' : ''}" ${adj ? `tabindex="0" role="button" aria-label="${G.J(Z.n, '으로', '로')} 이동 · ${rt ? rt.length : 0}구역 · 약 ${rt ? rt.length * G.DUR.move : 0}초" data-zone="${i}" ${cmdAttr({ k: 'move', to: i })}` : i === z && free ? `tabindex="0" role="button" aria-label="${Z.n} 탐색" ${cmdAttr({ k: 'explore' })}` : ''}><rect x="${Z.x - w / 2}" y="${Z.y - 11}" width="${w}" height="22" rx="2"/><text x="${Z.x}" y="${Z.y + 4.5}" text-anchor="middle">${Z.n}</text></g>`;
+    });
+    for (const n of v.noise || []) {
+      const Z = ZONES[n.z], w = Z.n.length * 13 + 18, x = Z.x + w / 2 + 2, y = Z.y - 14, op = Math.max(0.35, 1 - n.age);
+      h += `<g class="noise ${n.age < 0.25 ? 'fresh' : ''} ${n.k === 'mob' ? 'mob' : ''}" style="opacity:${op.toFixed(2)}"><title>${Z.n} · ${n.k === 'mob' ? '짐승 소란' : '싸움 소란'}</title><path d="M${x + 9} ${y} L${x + 18} ${y + 16} L${x} ${y + 16} Z"/><text x="${x + 9}" y="${y + 14}" text-anchor="middle">!</text></g>`;
+    }
+    const tag = (Z, s, cls) => { const w = s.length * 12 + 14; return `<g class="tag ${cls}"><rect x="${Z.x - w / 2}" y="${Z.y - 37}" width="${w}" height="18" rx="2"/><path d="M${Z.x - 4} ${Z.y - 19.5}h8l-4 5z"/><text x="${Z.x}" y="${Z.y - 24}" text-anchor="middle">${s}</text></g>`; };
+    if (me && v.started) { if (me.base && me.base.zone !== z) h += tag(ZONES[me.base.zone], '거점', 'base'); h += tag(ZONES[z], me.inBase ? '나 · 거점 안' : me.base && me.base.zone === z ? '나 · 거점' : '나', 'me'); }
+    set('mapSvg', h);
+    if (centerPending && me && v.started && $('mapView').clientWidth) {
+      centerPending = false; fitMap();
+      const V = $('mapView'), Zc = ZONES[z], k = Math.min(1.6, Math.max(1, V.clientWidth / 600 / baseK * 0.8)), sc = baseK * k;
+      mz.k = k; mz.x = V.clientWidth / 2 - Zc.x * sc; mz.y = V.clientHeight / 2 - Zc.y * sc; applyMz();
+    }
+    $('mapHint').textContent = gneed.length ? `목표 ${ITEMS[goal].n} · 구역 아래 아이콘: 부족한 재료가 잘 나오는 곳${gneed.filter(id => !sources(id).length).map(id => ` · ${ITEMS[id].n}: ${HUNT[id] ? '사냥' : ''}${HUNT[id] && CRATE_SET.has(id) ? '·' : ''}${CRATE_SET.has(id) ? '보급 상자' : ''}`).join('')}` : !goal ? (free ? '내 구역 이름: 탐색 · 테두리 빛나는 구역: 이동 · 끌기/휠: 지도 움직이기' : '') : `목표 ${ITEMS[goal].n} · 재료가 다 모였다. 제작 탭에서 만들 수 있다`;
+    if (false) $('mapHint').textContent = free ? '색 점: 탐험지 · 테두리 빛나는 구역: 이동 가능 · 끌기/휠: 지도 움직이기' : '';
+  }
+
+
+  // ---------- 제작 도우미 ----------
+  let craftCat = 'all', craftQ = '', craftSel = '', goal = '';
+  const CFILT = { all: { test: () => true }, weapon: { test: x => x.t === 'weapon' }, armor: { test: x => x.t === 'armor' }, head: { test: x => x.t === 'head' }, arm: { test: x => x.t === 'arm' }, boots: { test: x => x.t === 'boots' }, potion: { test: x => x.t === 'potion' }, food: { test: x => x.t === 'food' }, inter: { test: x => x.t === 'mat' && x.g > 0 }, mat: { test: x => x.t === 'mat' && !x.g } };
+  const CFILT_ORDER = [['all', '모든 아이템'], ['weapon', '무기'], ['armor', '옷'], ['head', '머리'], ['arm', '팔'], ['boots', '다리'], ['potion', '회복·물약'], ['food', '음식'], ['inter', '중간 재료'], ['mat', '기본 재료']];
+  const TYPE_N = { weapon: '무기', armor: '옷', head: '머리', arm: '팔', boots: '다리', potion: '회복', food: '음식', mat: '재료' }, GRADE_N = ['일반', '고급', '희귀', '영웅'];
+  const HUNT = { meat: 1, leather: 1, feather: 1 }, CRATE_SET = new Set(D.CRATE);
+  const grade = it => it.g || 0;
+  const recipeOf = id => RECIPES.find(r => r.out === id);
+  function statLine(it) {
+    const s = [];
+    if (it.atk) s.push(`공격력 +${it.atk}`); if (it.def) s.push(`방어력 +${it.def}`); if (it.agi) s.push(`민첩 +${it.agi}`); if (it.luk) s.push(`운 +${it.luk}`);
+    if (it.hun) s.push(`허기 +${it.hun}`); if (it.hp) s.push(`체력 +${it.hp}`); if (it.en) s.push(`스태미너 +${it.en}`);
+    if (it.buff) s.push(it.d);
+    if (it.t === 'weapon') s.push(WEAPONS[it.wc].d);
+    return s.map(x => `<span>${x}</span>`).join('') || '<span class="lab">제작 재료로 쓴다</span>';
+  }
+  function treeNode(id, n, me) {
+    const it = ITEMS[id], r = recipeOf(id), have = count(me, id), enough = have >= n;
+    const kids = r && !(it.tier === 1) ? Object.keys(r.in).map(k => treeNode(k, r.in[k], me)).join('') : '';
+    return `<li><button class="tnode" data-ci="${id}"><span class="itile sm g${grade(it)}" aria-hidden="true">${it.e}</span><span class="tn">${it.n}</span><span class="num ${enough ? 'ok' : 'no'}">${Math.min(have, n)}/${n}</span></button>${kids ? `<ul>${kids}</ul>` : ''}</li>`;
+  }
+  // 재료별로 잘 나오는 구역 (구역 자체 + 탐험지 분류의 비중)
+  const SRC = {};
+  for (const id in ITEMS) {
+    if (recipeOf(id)) continue;
+    const sc = ZONES.map(Z => { const tot = o => Object.values(o).reduce((a, b) => a + b, 0); let v = (Z.res[id] || 0) / tot(Z.res) * 0.3; for (const p of Z.places) { const c = D.CATS[D.PLACES[p].cat].res; v += (c[id] || 0) / tot(c) * 0.7 / Z.places.length; } return v; });
+    SRC[id] = sc.map((v, z) => [v, z]).filter(x => x[0] > 0.06).sort((a, b) => b[0] - a[0]).slice(0, 5).map(x => x[1]);
+  }
+  const sources = id => SRC[id] || [];
+  function goalNeeds(me) {
+    if (!goal) return [];
+    const need = {}, have = {}; for (const s of me.inv) if (s) have[s.id] = (have[s.id] || 0) + s.n; for (const k in me.eq) if (me.eq[k]) have[me.eq[k]] = (have[me.eq[k]] || 0) + 1;
+    const walk = (id, n) => { const h = Math.min(have[id] || 0, n); have[id] = (have[id] || 0) - h; n -= h; if (n <= 0) return; const r = recipeOf(id); if (r && ITEMS[id].tier !== 1) { for (const k in r.in) walk(k, r.in[k] * n); } else need[id] = (need[id] || 0) + n; };
+    const r = recipeOf(goal); if (r) for (const k in r.in) walk(k, r.in[k]); else walk(goal, 1);
+    return Object.keys(need);
+  }
+
+  function radar(st) {
+    const ax = [['체력', st.maxHp / 260], ['공격', st.atk / 70], ['방어', st.def / 90], ['민첩', st.agi / 12], ['운', st.luk / 10]];
+    const cx = 66, cy = 62, R = 44, pt = (i, r) => { const a = -Math.PI / 2 + i * 2 * Math.PI / 5; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; };
+    const poly = r => ax.map((_, i) => pt(i, r).map(n => n.toFixed(1)).join(',')).join(' ');
+    let g = [1, .66, .33].map(k => `<polygon points="${poly(R * k)}" fill="none" stroke="var(--line2)" stroke-width="1"/>`).join('');
+    g += ax.map((_, i) => { const [x, y] = pt(i, R); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`; }).join('');
+    g += `<polygon points="${ax.map(([, v], i) => pt(i, R * Math.max(.08, Math.min(1, v))).map(n => n.toFixed(1)).join(',')).join(' ')}" fill="rgba(63,214,232,.28)" stroke="var(--accent)" stroke-width="1.5" style="filter:drop-shadow(0 0 4px rgba(63,214,232,.6))"/>`;
+    g += ax.map(([n], i) => { const [x, y] = pt(i, R + 11); return `<text x="${x}" y="${y + 3}" text-anchor="middle">${n}</text>`; }).join('');
+    return `<div class="radar"><svg viewBox="0 0 132 120" role="img" aria-label="능력치">${g}</svg><dl><dt>공격</dt><dd>${st.atk}</dd><dt>방어</dt><dd>${st.def}</dd><dt>민첩</dt><dd>${st.agi}</dd><dt>운</dt><dd>${st.luk}</dd></dl></div>`;
+  }
+
+  // 지도 이동: 폐쇄 구역을 피하는 가장 짧은 길 (엔진과 같은 규칙)
+  let curZs = null, curFrom = -1;
+  function routeC(from, to, zs) {
+    const prev = { [from]: -1 }, q = [from];
+    while (q.length) { const u = q.shift(); if (u === to) break; for (const w of ZONES[u].adj) if (prev[w] === undefined && zs[w] < 2) { prev[w] = u; q.push(w); } }
+    if (prev[to] === undefined) return null; const p = []; for (let u = to; u !== -1; u = prev[u]) p.unshift(u); return p.slice(1);
+  }
+  function showPreview(to) {
+    const g = $('mapPrev'); if (!g) return;
+    if (to < 0 || curFrom < 0 || !curZs) { g.innerHTML = ''; return; }
+    const rt = routeC(curFrom, to, curZs); if (!rt) { g.innerHTML = ''; return; }
+    const pts = [curFrom].concat(rt), Z = ZONES[to], cost = G.World.moveCost(rt.length), sec = rt.length * G.DUR.move, txt = `${rt.length}구역 · 약 ${sec}초 · 스태미너 ${cost}`, w = txt.length * 7 + 16;
+    g.innerHTML = `<polyline class="route pre" fill="none" points="${pts.map(q => ZONES[q].x + ',' + ZONES[q].y).join(' ')}"/><g class="eta"><rect x="${Z.x - w / 2}" y="${Z.y + 14}" width="${w}" height="18" rx="2"/><text x="${Z.x}" y="${Z.y + 27}" text-anchor="middle">${txt}</text></g>`;
+  }
+  document.addEventListener('pointerover', e => { const n = e.target.closest && e.target.closest('#mapSvg [data-zone]'); showPreview(n ? +n.dataset.zone : -1); });
+  document.addEventListener('focusin', e => { const n = e.target.closest && e.target.closest('#mapSvg [data-zone]'); showPreview(n ? +n.dataset.zone : -1); });
+  // ================= 화면 =================
+  function count(me, id) { let n = 0; for (const s of me.inv) if (s && s.id === id) n += s.n; if (me.eq[ITEMS[id].t] === id) n++; return n; }
+  function itemDesc(it) { if (it.tier) return [it.atk && `공격 +${it.atk}`, it.def && `방어 +${it.def}`, it.agi && `민첩 +${it.agi}`, it.luk && `운 +${it.luk}`].filter(Boolean).join(' · '); return it.d || (it.g ? '중간 재료' : '재료'); }
+  const need = (me, cost) => Object.keys(cost).map(k => `<span class="${count(me, k) >= cost[k] ? '' : 'no'}">${ITEMS[k].n} ${Math.min(count(me, k), cost[k])}/${cost[k]}</span>`).join(' · ');
+  const logHtml = (list, withTime) => list.map(l => `<div class="${l.k || ''}">${withTime ? `<time>${clock(l.t)}</time>` : ''}<span>${esc(l.m)}</span></div>`).join('');
+  function setLog(id, html) { const el = $(id), stick = el.scrollHeight - el.scrollTop - el.clientHeight < 40; if (set(id, html) && stick) el.scrollTop = el.scrollHeight; }
+  const meter = (cls, n, v, max) => `<div class="meter ${cls}"><span>${n}</span><div class="bar"><i style="width:${Math.max(0, Math.min(100, v / max * 100))}%"></i></div><b class="num">${v}</b></div>`;
+  const NOBODY = { name: '?', color: '#888' };
+
+  function render() {
+    const v = view; if (!v) return;
+    const me = v.me, P = people, mine = P[myId] || NOBODY, alive = v.roster.filter(r => r.al).length;
+    set('title', `<h1>최후의 섬</h1><span class="lab">${esc(roomName)} · ${G.TEMPO[v.tempo].n}</span><div class="row">${mode === 'off' ? `<button class="sm" data-do="speed">속도 ×${speed}</button>` : ''}${askLeave ? `<button class="sm" data-do="leave">메뉴로 (저장됨)</button><button class="sm" data-do="stay">계속하기</button>` : `<button class="sm" data-do="leave">나가기</button>`}</div>`);
+    set('clock', `<h3><span>경과</span><span class="lab">${v.final ? '최종 구역' : `${v.phase + 1}번째 밤`}</span></h3><div class="big num">${clock(v.t)}</div>
+      <span class="${v.started && !v.over ? 'warn' : 'lab'}">${!v.started ? '시작 대기 중' : v.over ? '실험 종료' : v.final ? `숨을 곳 없음 · ${ZONES[v.zs.findIndex(x => x < 2)].n}` : `다음 폐쇄까지 ${clock(v.nextClose - v.t)}`}</span>
+      <span class="lab">남은 인원 ${alive} / ${v.roster.length} · 남은 구역 ${v.zs.filter(x => x < 2).length}</span>`);
+    set('tabs', [['map', '◈ 지도 · 탐험'], ['craft', '▤ 제작'], ['base', '⌂ 거점'], ['roster', '☰ 생존자']].map(([k, n]) => `<button data-tab="${k}" aria-selected="${tab === k}">${n}</button>`).join(''));
+    const wasHidden = $('mapTab').hidden; $('mapTab').hidden = tab !== 'map'; $('pane').hidden = tab === 'map';
+    if (wasHidden && tab === 'map') fitMap();
+    setLog('chatLog', v.chat.map(c => `<div><span><b>${esc(c.n)}</b> ${esc(c.m)}</span></div>`).join('') || '<p class="help">아직 아무도 말하지 않았다.</p>');
+    set('feedLog', logHtml(v.feed.slice().reverse(), true) || '<p class="help">아직 소식이 없다.</p>');
+    if (!me) return;
+    renderMap(v);
+    // 조종 중인 생존자
+    const eqn = k => me.eq[k] ? `<span class="g${grade(ITEMS[me.eq[k]])}">${ITEMS[me.eq[k]].n}</span> <small>${itemDesc(ITEMS[me.eq[k]])}</small>` : '<small>없음</small>';
+    set('dossier', `<h3><span>조종 중</span><span class="lab">No.${String(me.id).padStart(3, '0')}</span></h3>
+      <div class="who">${face(mine, 56)}<div class="grow"><div class="nm">${esc(mine.name)}</div><small>Lv ${me.lvl} · 처치 ${me.kills}</small><small>${esc(mine.bio || '')}</small></div></div>
+      <div class="row">${!me.alive ? '<span class="chip d">탈락</span>' : v.battle ? '<span class="chip d">교전 중</span>' : me.inBase ? '<span class="chip g">거점 안 · 안전</span>' : '<span class="chip g">양호</span>'}${me.hunger <= 0 ? '<span class="chip d">굶주림</span>' : me.hunger < 25 ? '<span class="chip w">배고픔</span>' : ''}${me.en < 15 ? '<span class="chip w">지침</span>' : ''}${me.bf.atk ? '<span class="chip g">투지</span>' : ''}${me.bf.agi ? '<span class="chip g">신속</span>' : ''}</div>
+      <div class="meters">${meter('hp', '체력', me.hp, me.st.maxHp)}${meter('hun', '허기', me.hunger, 100)}${meter('', '스태미너', me.en, 100)}${meter('xp', '경험', me.xp, me.need)}</div>
+      ${radar(me.st)}
+      <div class="stats5">${me.sp ? `<div class="sp">능력치 포인트 <b class="num">${me.sp}</b> — 올릴 능력치를 고른다</div>` : ''}${Object.keys(G.STAT_FX).map(k => `<div class="srow"><span class="sn">${G.STAT_FX[k][0]}</span><b class="num">${me.raw[k] || 0}</b><small>${G.STAT_FX[k][1]}</small>${me.sp && me.alive && (me.raw[k] || 0) < G.STAT_MAX ? `<button class="sm go plus" ${cmdAttr({ k: 'stat', s: k })} aria-label="${G.STAT_FX[k][0]} 올리기">+1</button>` : ''}</div>`).join('')}</div>
+      <dl class="kvs"><dt>무기</dt><dd>${eqn('weapon')}</dd><dt>옷</dt><dd>${eqn('armor')}</dd><dt>머리</dt><dd>${eqn('head')}</dd><dt>팔</dt><dd>${eqn('arm')}</dd><dt>다리</dt><dd>${eqn('boots')}</dd><dt>거점</dt><dd>${me.base ? ZONES[me.base.zone].n : '<small>없음</small>'}</dd></dl>`);
+    // 소지품
+    const inB = !!v.battle, used = me.inv.filter(Boolean).length; if (!me.inv[sel]) sel = -1;
+    let bh = `<h3><span>소지품</span><span class="lab num">${used}/${G.INV}</span></h3><div class="slots">${me.inv.map((s, i) => `<button class="slot g${s ? grade(ITEMS[s.id]) : 0}" data-slot="${i}" aria-pressed="${sel === i}" ${s ? `aria-label="${ITEMS[s.id].n}"` : 'disabled'}>${s ? ITEMS[s.id].e : ''}${s && !ITEMS[s.id].tier ? `<small>${s.n}</small>` : ''}</button>`).join('')}</div>`;
+    if (sel >= 0) {
+      const s = me.inv[sel], it = ITEMS[s.id];
+      bh += `<div><div>${it.n}${it.tier ? '' : ` ×${s.n}`}</div><span class="lab">${itemDesc(it)}</span></div><div class="row">
+        ${it.t !== 'mat' && me.alive ? (inB ? (it.tier ? '' : `<button class="sm" ${cmdAttr({ k: 'bat', a: 'item', slot: sel })} ${v.battle.picked ? 'disabled' : ''}>사용 (한 턴)</button>`) : `<button class="sm" ${cmdAttr({ k: 'use', slot: sel })}>${it.tier ? '장비' : '사용'}</button>`) : ''}
+        ${me.inBase && !inB ? `<button class="sm" ${cmdAttr({ k: 'stash', slot: sel })}>창고에 보관</button>` : ''}${!inB && me.alive ? `<button class="sm" ${cmdAttr({ k: 'drop', slot: sel })}>버림</button>` : ''}</div>`;
+    } else bh += '<span class="lab">칸을 누르면 쓰거나 버릴 수 있다.</span>';
+    set('bag', bh);
+    renderStatus(v, me, alive);
+    if (tab === 'map') renderPlaces(v, me); else renderPane(v, me);
+    setLog('log', logHtml(me.log, true));
+    // 근처 사람
+    let ph;
+    if (!v.started || !me.alive || !v.here) ph = '<h3><span>근처 사람</span></h3><p class="help">—</p>';
+    else if (me.inBase) ph = '<h3><span>근처 사람</span></h3><p class="help">거점 안에서는 밖이 보이지 않고, 밖에서도 이곳을 찾지 못한다.</p>';
+    else {
+      const h = v.here, unseen = h.signs - h.seen.length;
+      ph = `<h3><span>근처 사람 · 본 적 있음 ${h.seen.length}</span><span class="lab">${unseen > 0 ? `기척 ${unseen > 1 ? '여럿' : '하나'}` : ''}</span></h3>` + h.seen.map(o => { const p = P[o.id] || NOBODY; return `<div class="person">${face(p, 36)}<span class="nm">${esc(p.name)}<small>Lv ${o.lvl} · ${ITEMS[o.w] ? ITEMS[o.w].n : '맨손'} · ${o.cond}</small></span></div>`; }).join('');
+      ph += `<p class="help">${h.signs === 0 ? '인기척이 없다.' : unseen > 0 ? '기척이 있다. 탐색하다 마주치면 먼저 칠 수 있다. 상대도 마찬가지다.' : '탐색하다 마주치면 먼저 칠 수 있다. 상대도 마찬가지다.'}</p>`;
+    }
+    set('people', ph);
+  }
+
+  function renderStatus(v, me, alive) {
+    const P = people, S = $('status'); let h = '';
+    if (!v.started) h = `<h3><span>대기실</span></h3><p style="margin:0">배가 섬에 닿기를 기다리는 중이다. 지금 ${v.roster.length}명이 타고 있다.</p><p class="help">같은 방 이름으로 들어온 사람은 ‘생존자’ 탭에 나타납니다. 시작하면 AI 생존자가 합류하고, 두 번째 폐쇄 전까지는 뒤늦게 들어올 수 있습니다.</p>${gm ? '<div class="row"><button class="go" data-do="start">실험 시작</button></div>' : '<p class="help">방장이 시작하기를 기다리는 중입니다.</p>'}`;
+    else if (v.over) {
+      const my = v.over.rank.indexOf(myId);
+      h = `<h3><span>실험 종료</span></h3><p style="margin:0">${my === 0 ? '마지막까지 살아남았다.' : `${my + 1}번째로 남은 사람이었다.`}</p>
+        ${v.over.rank.map((id, i) => { const p = P[id] || NOBODY, r = v.roster.find(x => x.id === id) || { k: 0 }; return `<div class="person"><b>${i + 1}</b>${face(p, 28)}<span class="nm">${esc(p.name)}${p.bot ? ' <span class="chip">AI</span>' : ''}${id === myId ? ' <span class="chip g">나</span>' : ''}<small>처치 ${r.k}</small></span></div>`; }).join('')}
+        <div class="row">${gm ? '<button class="go" data-do="reset">새 판 열기</button>' : ''}<button data-do="leave">메뉴로</button></div>`;
+    } else if (!me.alive) h = `<h3><span>탈락</span></h3><p style="margin:0">기록은 여기서 끊겼다. 남은 ${alive}명의 소식은 ‘섬 소식’으로 들려온다.</p>`;
+    else if (v.here && v.here.enc && !me.act) {
+      const o = v.here.enc, p = P[o.id] || NOBODY;
+      h = `<h3><span>조우 · ${ZONES[me.zone].n}</span><span class="chip w">상대는 아직 모른다</span></h3>
+        <div class="who">${face(p, 64)}<div class="grow"><div class="nm">${esc(p.name)}${o.grudge ? ' <span class="chip d">나를 친 상대</span>' : ''}</div><small>Lv ${o.lvl} · ${ITEMS[o.w] ? ITEMS[o.w].n : '맨손'} · ${o.cond}</small><small>${esc(p.bio || '')}</small></div></div>
+        <div class="cards acts"><button class="card act main danger-card" style="grid-template-columns:1fr" ${cmdAttr({ k: 'attack', who: o.id })} ${me.en < G.COST.attack ? 'disabled' : ''}><b>선제공격</b><small>스태미너 ${G.COST.attack} · 상대는 이번엔 되받아치지 못한다</small></button>
+        <button class="card act" style="grid-template-columns:1fr" ${cmdAttr({ k: 'ignore' })}><b>지나친다</b><small>들키지 않고 넘어간다</small></button></div>`;
+    }
+    else if (v.fight) {
+      const f = v.fight, mob = !!f.foe.mob, fp = mob ? { name: MOBS[f.foe.mob].n } : (P[f.foe.id] || NOBODY), mine = P[myId] || NOBODY;
+      const RES = { win: ['쓰러뜨림', 'g'], hit: ['공격 성공', 'g'], ambushed: ['기습당함', 'd'], lose: ['패배', 'd'], fled: ['도주 성공', 'w'], escaped: ['상대가 도주', 'w'], draw: ['승부 없음', ''] }[f.res];
+      const fn = f.foeNow, canHit = !mob && fn && fn.al && fn.zone === me.zone && me.alive && !me.inBase;
+      const bar = (now, mh, before) => `<div class="hpb"><i style="width:${Math.max(0, now / mh * 100)}%"></i></div><span class="lab num">${before} → ${now} / ${mh}</span>`;
+      h = `<h3><span>전투 결과 · ${ZONES[f.zone].n}</span><span class="chip ${RES[1]}">${RES[0]}</span></h3>
+        <div class="vs"><div class="side"><div class="who">${face(mine, 44)}<div><div class="nm">${esc(mine.name)}</div><small>${f.ini ? (mob ? '사냥' : '선제공격') : mob ? '조우' : '기습당함'}</small></div></div>${bar(Math.round(me.hp), me.st.maxHp, f.me0)}</div>
+        <div class="mid">VS</div>
+        <div class="side"><div class="who">${mob ? `<span class="face" style="width:44px;height:44px;font-size:26px;background:#000">${MOBS[f.foe.mob].e}</span>` : face(fp, 44)}<div><div class="nm">${esc(fp.name)}</div><small>${mob ? '야생동물' : fn && !fn.al ? '탈락' : fn && fn.zone !== me.zone ? '시야 밖' : '같은 구역'}</small></div></div>${bar(fn ? fn.hp : f.opEnd, fn ? fn.mh : f.opMh, f.op0)}</div></div>
+        <div class="log" id="blog">${logHtml(f.log)}</div>
+        <div class="row"><button class="go" ${cmdAttr({ k: 'ack' })}>확인</button><span class="help">${f.res === 'ambushed' ? '되갚으려면 탐색하다 다시 마주쳐야 한다(나를 친 상대는 조금 더 잘 찾는다). 피하려면 지도에서 다른 구역으로.' : f.res === 'hit' ? '상대는 이쪽을 알아챘다. 다시 치려면 또 마주쳐야 한다.' : ''}</span></div>`;
+    } else if (me.act) {
+      const a = me.act;
+      if (a.k === 'rest') { const rate = G.World.restRate(v.len, me.inBase); h = `<h3><span>휴식 중 · ${ZONES[me.zone].n}</span><span class="lab num">${me.en >= 100 ? '가득' : '가득까지 ' + clock((100 - me.en) / rate)}</span></h3><div class="meters">${meter('', '스태미너', me.en, 100)}</div><p class="help">${me.inBase ? '거점 안이라 더 빨리 회복되고 체력도 찬다.' : '거점 밖이라 쉬는 동안 들킬 수 있다.'} 가득 차면 저절로 일어난다.</p><div class="row"><button class="sm" ${cmdAttr({ k: 'cancel' })}>일어난다</button></div>`; }
+      else { const nm = { explore: `${ZONES[me.zone].n} 일대를 뒤지는 중`, hunt: '짐승의 흔적을 쫓는 중', move: `${G.J(ZONES[a.to || 0].n, '으로', '로')} 이동하는 중${a.path && a.path.length > 1 ? ` · ${a.path.length}구역 남음` : ''}`, build: '거점을 짓는 중' }[a.k]; h = `<h3><span>${nm}</span><span class="lab num">${clock(a.end - v.t)}</span></h3><div class="prog"><i style="width:${Math.min(100, (v.t - a.start) / (a.end - a.start) * 100)}%"></i></div><div class="row"><button class="sm" ${cmdAttr({ k: 'cancel' })}>그만둔다</button></div>`; }
+    }
+    S.hidden = !h; if (h && set('status', h)) { const el = $('blog'); if (el) el.scrollTop = el.scrollHeight; } if (!h) cache.status = '';
+  }
+
+  function renderPlaces(v, me) {
+    if (!v.started || !me.alive || v.over) return set('places', '<h3><span>행동</span></h3><p class="help">—</p>');
+    const Z = ZONES[me.zone], st = v.zs[me.zone], busy = !!(v.battle || me.act), dis = busy ? 'disabled' : '';
+    let h = `<h3><span>${me.inBase ? `${Z.n} · 거점 안` : Z.n}</span><span class="chip ${st === 1 ? 'w' : 'g'}">${st === 1 ? '폐쇄 예고' : v.final ? '최종 구역' : '안전'}</span></h3><p class="help" style="font-family:var(--px);font-size:15px;color:var(--fg)">${me.inBase ? '문을 잠그면 섬은 잠시 바깥의 일이 된다.' : Z.d}</p>`;
+    const one = (c, n, d, cls) => `<button class="card act ${cls || ''}" style="grid-template-columns:1fr" ${cmdAttr(c)} ${dis}><b>${n}</b><small>${d}</small></button>`;
+    h += '<div class="cards acts">';
+    if (!me.inBase) {
+      const worn = Z.places.reduce((a, p) => a + (v.here.worn.includes(p) ? 1 : 0), 0);
+      h += one({ k: 'explore' }, '탐색', `${G.DUR.explore}초 · 스태미너 ${G.COST.explore}${worn ? ` · <span class="no">${worn >= Z.places.length / 2 ? '많이 털림' : '조금 털림'}</span>` : ''}`, 'main');
+      h += one({ k: 'hunt' }, '사냥', `${G.DUR.hunt}초 · 스태미너 ${G.COST.hunt} · 고기·가죽·깃털`);
+      if (v.here.pile) h += one({ k: 'loot' }, '남겨진 짐 뒤지기', `${v.here.pile}개가 놓여 있다`);
+    }
+    { const rate = G.World.restRate(v.len, me.inBase), full = Math.ceil((100 - me.en) / rate); h += one({ k: 'rest' }, '휴식', me.en >= 100 ? '스태미너 가득' : `스태미너 회복 · 약 ${clock(full)}면 가득${me.inBase ? ' · 체력도 회복' : ''}`, me.en < 30 ? 'main' : ''); }
+    if (me.inBase) h += one({ k: 'leave' }, '거점에서 나간다', '다시 들킬 수 있다'); else if (me.base && me.base.zone === me.zone && !v.final) h += one({ k: 'enter' }, '거점으로 들어간다', '안전');
+    h += '</div>';
+    if (!me.inBase) h += `<p class="help">이동: 지도에서 가고 싶은 구역 이름을 누른다. 멀수록 시간과 스태미너가 더 든다.</p>`;
+    set('places', h);
+  }
+
+  function renderPane(v, me) {
+    const P = people; let h = '';
+    if (tab === 'roster') {
+      h = `<h3><span>생존자 명단</span><span class="lab">${v.roster.filter(r => r.al).length}명 생존</span></h3>` + v.roster.map(r => { const p = P[r.id] || NOBODY; return `<div class="person ${r.al ? '' : 'out'}">${face(p, 36)}<span class="nm">${esc(p.name)}${p.bot ? ' <span class="chip">AI</span>' : ''}${r.id === myId ? ' <span class="chip g">나</span>' : ''}<small>${r.al ? (r.on ? '생존' : '생존 · 자리 비움') : '탈락'} · 처치 ${r.k}${p.bio ? ' · ' + esc(p.bio) : ''}</small></span></div>`; }).join('');
+    } else if (!v.started || !me.alive || v.over) h = '<p class="help">지금은 할 수 없다.</p>';
+    else if (tab === 'craft') {
+      const all = Object.values(ITEMS), q = craftQ.trim();
+      const shown = all.filter(it => (craftCat === 'all' || CFILT[craftCat].test(it)) && (!q || it.n.includes(q)));
+      if (!ITEMS[craftSel]) craftSel = (shown.find(it => recipeOf(it.id)) || shown[0] || all[0]).id;
+      const it = ITEMS[craftSel], rec = recipeOf(it.id), ok = rec && Object.keys(rec.in).every(k => count(me, k) >= rec.in[k]);
+      const uppers = RECIPES.filter(r => r.in[it.id]).map(r => ITEMS[r.out]);
+      const cnt = k => all.filter(x => k === 'all' || CFILT[k].test(x)).length;
+      h = `<h3><span>아이템 제작</span><span class="lab">${goal ? `목표 · <span class="g${grade(ITEMS[goal])}">${ITEMS[goal].n}</span>` : '목표를 정하면 지도에 재료 위치가 표시된다'}</span></h3>
+      <div class="craft">
+        <div class="cleft">
+          <input type="text" id="craftQ" placeholder="아이템 검색" value="${esc(craftQ)}" aria-label="아이템 검색">
+          <div class="cfilt">${CFILT_ORDER.map(([k, n]) => `<button data-cf="${k}" aria-pressed="${craftCat === k}">${n}<span class="num">${cnt(k)}</span></button>`).join('')}</div>
+          <div class="igrid">${shown.map(x => { const r = recipeOf(x.id), can = r && Object.keys(r.in).every(k => count(me, k) >= r.in[k]), have = count(me, x.id); return `<button class="itile g${grade(x)}" data-ci="${x.id}" aria-pressed="${x.id === craftSel}" aria-label="${x.n}" title="${x.n}">${x.e}${can ? '<i class="can" aria-hidden="true"></i>' : ''}${have ? `<small>${have}</small>` : ''}${x.id === goal ? '<em>목표</em>' : ''}</button>`; }).join('') || '<p class="help">찾는 아이템이 없다.</p>'}</div>
+        </div>
+        <div class="cright">
+          <div class="csec"><span class="lab">상위 아이템</span><div class="uppers">${uppers.length ? uppers.map(u => `<button class="itile sm g${grade(u)}" data-ci="${u.id}" title="${u.n}">${u.e}</button><span class="lab">${u.n}</span>`).join('') : '<span class="help">이 아이템으로 만들 수 있는 것이 없다.</span>'}</div></div>
+          <div class="csec"><span class="lab">제작 트리</span><div class="treewrap"><ul class="tree">${treeNode(it.id, 1, me)}</ul></div></div>
+          <div class="cdet">
+            <div class="row" style="align-items:flex-start"><span class="itile g${grade(it)}" style="width:54px;font-size:28px" aria-hidden="true">${it.e}</span>
+              <div class="grow"><div class="nm g${grade(it)}">${it.n}</div><span class="lab">${TYPE_N[it.t]}${it.wc ? ' · ' + WEAPONS[it.wc].n : ''} · ${GRADE_N[grade(it)]}</span></div>
+              <div class="row">${rec ? `<button class="go" ${cmdAttr({ k: 'craft', r: it.id })} ${ok && !v.battle ? '' : 'disabled'}>제작</button>` : ''}<button data-goal="${it.id}" ${goal === it.id ? 'aria-pressed="true"' : ''}>${goal === it.id ? '목표 해제' : '목표로 설정'}</button></div></div>
+            <div class="stats">${statLine(it)}</div>
+            ${it.t === 'weapon' && it.wc !== ITEMS[me.eq.weapon].wc ? '<p class="help no">지금 쥔 무기와 계열이 다르다. 이 계열의 1단계 무기부터 있어야 만들 수 있다.</p>' : ''}
+            ${rec ? `<span class="lab">필요한 재료</span><p class="help rc" style="padding:0;background:none;border:0"><small style="font-size:13px">${need(me, rec.in)}</small></p>` : ''}
+            ${!rec ? `<span class="lab">얻는 곳</span><p class="help">${sources(it.id).map(z => ZONES[z].n).join(', ') || (it.tier === 1 ? '시작할 때 지급된다.' : '보급 상자에서만 나온다.')}${HUNT[it.id] ? ' · 사냥' : ''}${CRATE_SET.has(it.id) ? ' · 보급 상자' : ''}</p>` : ''}
+            <span class="lab">보유 ${count(me, it.id)}개</span>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      const here = me.base && me.base.zone === me.zone, st = v.zs[me.zone], busy = !!(v.battle || me.act);
+      h = `<h3><span>거점</span><span class="lab">${me.base ? ZONES[me.base.zone].n + (me.inBase ? ' · 안에 있음' : '') : '없음'}</span></h3>
+        <ul class="help"><li>거점 안에 있으면 누구에게도 발견되지 않고 습격당하지 않는다. 허기는 절반 속도로 줄고, 쉬면 체력까지 회복된다.</li><li>한동안 조작이 없으면 같은 구역의 거점으로 알아서 돌아간다.</li><li>구역이 폐쇄되면 거점은 무너지고 창고의 물건도 사라진다. 최종 구역에서는 거점을 쓸 수 없다.</li></ul>`;
+      if (v.final) h += '<p class="no" style="margin:0">이제 숨을 곳은 없다.</p>';
+      else {
+        h += '<div class="cards">';
+        if (me.inBase) h += `<button class="card" style="grid-template-columns:1fr" ${cmdAttr({ k: 'leave' })}><b>나간다</b><small>다시 들킬 수 있다</small></button>`;
+        else if (here) h += `<button class="card" style="grid-template-columns:1fr" ${cmdAttr({ k: 'enter' })} ${busy ? 'disabled' : ''}><b>들어간다</b><small>안전</small></button>`;
+        else h += `<button class="card" style="grid-template-columns:1fr" ${cmdAttr({ k: 'build' })} ${st !== 0 || busy ? 'disabled' : ''}><b>${me.base ? `${G.J(ZONES[me.zone].n, '으로', '로')} 거점을 옮긴다` : `${ZONES[me.zone].n}에 거점을 짓는다`}</b><small>${G.DUR.build}초 · 스태미너 ${G.COST.build}${me.base ? ' · 옛 창고는 버려짐' : ''}${st !== 0 ? ' · 폐쇄 예고 구역 불가' : ''}</small></button>`;
+        h += '</div>';
+        if (!here) h += `<span class="lab">필요한 재료: ${need(me, BASE_COST)}</span>`;
+        if (me.inBase) h += `<span class="lab">── 창고 ${me.base.stash.length}/${G.STASH} · 소지품 칸을 눌러 ‘창고에 보관’ ──</span>${me.base.stash.map((s, i) => `<div class="person"><span class="nm">${ITEMS[s.id].e} ${ITEMS[s.id].n} ×${s.n}</span><button class="sm" ${cmdAttr({ k: 'unstash', i })}>꺼낸다</button></div>`).join('') || '<p class="help">비어 있다.</p>'}`;
+      }
+    }
+    set('pane', h);
+  }
+  window.__ic = { get world() { return world; }, get view() { return view; }, get myId() { return myId; } };
+})();
+</script>
